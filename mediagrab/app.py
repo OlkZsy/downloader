@@ -12,11 +12,13 @@
 import os
 import subprocess
 import sys
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .config import Config
+from .config import CONFIG_DIR, COOKIES_DIR, Config
 from .engine import MP3_BITRATES, MP4_QUALITIES, DownloadManager
+from .version import check_remote, local_version
 from . import services
 
 # --- палитра (светлая, зелёный акцент) ---------------------------------
@@ -57,12 +59,18 @@ class App(tk.Tk):
         self.format_buttons = {}
         self.quality_buttons = {}
 
+        self.latest_version = None    # новая версия на GitHub (если есть)
+        self._version_note = None     # результат фоновой проверки
+        self._version_shown = False
+
         self._build_statusbar()
         self._build_sidebar()
         self._build_main_area()
         self._load_history()
         self._check_dependencies()
         self.after(150, self._poll_events)
+        threading.Thread(target=self._check_updates_bg,
+                         daemon=True).start()
 
     # ------------------------------------------------------------------
     # построение интерфейса
@@ -132,6 +140,12 @@ class App(tk.Tk):
             bg=CARD, fg=TEXT, relief="solid", bd=1, cursor="hand2",
             width=3, command=self._choose_folder)
         folder_btn.pack(side="left")
+
+        profile_btn = tk.Button(
+            row, text="👤", font=("TkDefaultFont", 12),
+            bg=CARD, fg=ACCENT_DARK, relief="solid", bd=1, cursor="hand2",
+            width=3, command=self._show_profile)
+        profile_btn.pack(side="left", padx=(8, 0))
 
         # --- переключатель формата -----------------------------------
         fmt_row = tk.Frame(main, bg=BG)
@@ -411,6 +425,12 @@ class App(tk.Tk):
         self._update_statusbar(note or f"Загрузка добавлена: {fmt}, {quality}")
 
     def _poll_events(self):
+        if self._version_note and not self._version_shown:
+            self._version_shown = True
+            self.latest_version = self._version_note
+            self._update_statusbar(
+                f"Доступна новая версия {self.latest_version} — "
+                "запустите update.bat (Windows) или ./update.sh")
         while not self.manager.events.empty():
             task_id, event, payload = self.manager.events.get_nowait()
             task = self.tasks.get(task_id)
@@ -633,6 +653,165 @@ class App(tk.Tk):
         self.clipboard_append(report)
         self._update_statusbar(
             "Отчёт скопирован — можно вставить в сообщение разработчику")
+
+    # ------------------------------------------------------------------
+    # профиль и настройки
+    # ------------------------------------------------------------------
+    def _check_updates_bg(self):
+        """Фоновая проверка новой версии на GitHub (не мешает работе)."""
+        try:
+            self._version_note = check_remote()
+        except Exception:  # noqa: BLE001 — нет сети и т. п.: молча пропускаем
+            self._version_note = None
+
+    def _show_profile(self):
+        win = tk.Toplevel(self)
+        win.title("Профиль и настройки")
+        win.configure(bg=BG)
+        win.geometry("620x640")
+        win.minsize(560, 560)
+        win.transient(self)
+
+        def section(text):
+            tk.Label(win, text=text, bg=BG, fg=ACCENT_DARK,
+                     font=("TkDefaultFont", 10, "bold")).pack(
+                anchor="w", padx=16, pady=(14, 4))
+
+        # --- профиль --------------------------------------------------
+        section("Профиль")
+        name_row = tk.Frame(win, bg=BG)
+        name_row.pack(fill="x", padx=16)
+        tk.Label(name_row, text="Имя:", bg=BG, fg=TEXT).pack(side="left")
+        name_var = tk.StringVar(value=self.config_store.profile_name)
+        name_entry = tk.Entry(name_row, textvariable=name_var, bg=CARD,
+                              fg=TEXT, relief="solid", bd=1)
+        name_entry.pack(side="left", fill="x", expand=True,
+                        padx=8, ipady=3)
+
+        def save_name(*_args):
+            self.config_store.profile_name = name_var.get().strip()
+
+        name_entry.bind("<FocusOut>", save_name)
+        win.protocol("WM_DELETE_WINDOW",
+                     lambda: (save_name(), win.destroy()))
+
+        # --- версия ----------------------------------------------------
+        section("Версия приложения")
+        if self.latest_version:
+            version_text = (
+                f"Установлена {local_version()}. Доступна новая версия "
+                f"{self.latest_version}!\nЗакройте приложение и запустите "
+                "update.bat (Windows) или ./update.sh (macOS/Linux).")
+            version_color = ERROR
+        else:
+            version_text = (f"Установлена версия {local_version()} — "
+                            "новых версий на GitHub не найдено.\n"
+                            "Проверка выполняется при каждом запуске.")
+            version_color = TEXT
+        tk.Label(win, text=version_text, bg=BG, fg=version_color,
+                 wraplength=560, justify="left").pack(anchor="w", padx=16)
+
+        # --- загрузки ---------------------------------------------------
+        section("Загрузки")
+        folder_var = tk.StringVar(
+            value=f"Папка: {self.config_store.download_dir}")
+        tk.Label(win, textvariable=folder_var, bg=BG, fg=TEXT,
+                 wraplength=560, justify="left").pack(anchor="w", padx=16)
+        history = self.config_store.history
+        done = sum(1 for e in history if e.get("status") == "done")
+        tk.Label(win, text=f"В истории: {len(history)} загрузок, "
+                           f"из них успешных: {done}",
+                 bg=BG, fg=MUTED).pack(anchor="w", padx=16, pady=(2, 0))
+
+        def change_folder():
+            self._choose_folder()
+            folder_var.set(f"Папка: {self.config_store.download_dir}")
+
+        dl_buttons = tk.Frame(win, bg=BG)
+        dl_buttons.pack(fill="x", padx=16, pady=(6, 0))
+        tk.Button(dl_buttons, text="Изменить папку…", bg=CARD, fg=TEXT,
+                  relief="solid", bd=1, cursor="hand2", padx=8,
+                  command=change_folder).pack(side="left")
+        tk.Button(dl_buttons, text="Очистить историю", bg=CARD, fg=ERROR,
+                  relief="solid", bd=1, cursor="hand2", padx=8,
+                  command=self._clear_history_ui).pack(side="left", padx=8)
+
+        # --- данные профиля ---------------------------------------------
+        section("Данные профиля")
+        tk.Label(win, text=(
+            "Все данные — настройки, история, cookies, отчёты об ошибках — "
+            f"хранятся отдельно от программы, в папке:\n{CONFIG_DIR}\n"
+            "Обновление через update.bat / update.sh заменяет только файлы "
+            "программы и НЕ трогает эту папку."),
+            bg=BG, fg=TEXT, wraplength=560, justify="left").pack(
+            anchor="w", padx=16)
+        tk.Label(win, text=(
+            "Вход в аккаунты (X, Facebook и др.) выполняется через файлы "
+            "cookies браузера — например, cookies/x.txt. Пошаговая "
+            "инструкция: docs/COOKIES.md (файл КАК_ПОДКЛЮЧИТЬ_АККАУНТ.txt "
+            "появится в папке cookies)."),
+            bg=BG, fg=MUTED, wraplength=560, justify="left").pack(
+            anchor="w", padx=16, pady=(6, 0))
+
+        data_buttons = tk.Frame(win, bg=BG)
+        data_buttons.pack(fill="x", padx=16, pady=(8, 0))
+        tk.Button(data_buttons, text="Открыть папку данных", bg=CARD,
+                  fg=TEXT, relief="solid", bd=1, cursor="hand2", padx=8,
+                  command=lambda: self._open_in_system(str(CONFIG_DIR))
+                  ).pack(side="left")
+        tk.Button(data_buttons, text="Папка cookies", bg=CARD, fg=TEXT,
+                  relief="solid", bd=1, cursor="hand2", padx=8,
+                  command=self._open_cookies_folder).pack(
+            side="left", padx=8)
+
+        tk.Button(win, text="Закрыть", bg=ACCENT, fg="white",
+                  relief="flat", cursor="hand2", padx=12,
+                  command=lambda: (save_name(), win.destroy())).pack(
+            side="bottom", anchor="e", padx=16, pady=12)
+
+    COOKIES_README = """Как подключить аккаунт (например, X/Twitter):
+
+1. Установите в браузер расширение для экспорта cookies:
+   - Chrome/Edge: «Get cookies.txt LOCALLY»
+   - Firefox: «cookies.txt»
+2. Войдите в свой аккаунт на сайте (например, x.com).
+3. Находясь на этом сайте, нажмите значок расширения -> Export.
+4. Сохраните файл в ЭТУ папку под именем <сервис>.txt:
+   x.txt, facebook.txt, youtube.txt, tiktok.txt
+   (файл all.txt будет использоваться для всех сервисов)
+5. Повторите загрузку в MediaGrab — cookies подхватятся сами.
+
+ВАЖНО: файл cookies даёт доступ к вашему аккаунту.
+Никому его не отправляйте и не выкладывайте в интернет.
+Cookies со временем устаревают — если вход перестал работать,
+экспортируйте файл заново.
+
+Подробная инструкция: docs/COOKIES.md в папке программы.
+"""
+
+    def _open_cookies_folder(self):
+        try:
+            COOKIES_DIR.mkdir(parents=True, exist_ok=True)
+            readme = COOKIES_DIR / "КАК_ПОДКЛЮЧИТЬ_АККАУНТ.txt"
+            if not readme.exists():
+                readme.write_text(self.COOKIES_README, encoding="utf-8")
+        except OSError:
+            pass
+        self._open_in_system(str(COOKIES_DIR))
+
+    def _clear_history_ui(self):
+        if not messagebox.askyesno(
+                "MediaGrab", "Очистить историю загрузок?\n"
+                "Сами скачанные файлы останутся на диске."):
+            return
+        active_items = {t["item"] for t in self.tasks.values()}
+        active_entries = [t["entry"] for t in self.tasks.values()]
+        self.config_store.clear_history(keep=active_entries)
+        for item in list(self.row_entries):
+            if item not in active_items:
+                self.row_entries.pop(item, None)
+                self.tree.delete(item)
+        self._update_statusbar("История очищена")
 
     # ------------------------------------------------------------------
     def _check_dependencies(self):

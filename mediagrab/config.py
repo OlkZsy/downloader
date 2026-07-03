@@ -11,10 +11,14 @@ from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".mediagrab"
 CONFIG_FILE = CONFIG_DIR / "config.json"
+#: cookies браузера для сервисов, требующих вход: <id сервиса>.txt
+#: (например x.txt) или all.txt для всех сервисов; см. docs/COOKIES.md
+COOKIES_DIR = CONFIG_DIR / "cookies"
 
 MAX_HISTORY = 200
 
 DEFAULTS = {
+    "profile_name": "",
     "download_dir": str(Path.home() / "Downloads"),
     "format": "mp3",
     "quality": {"mp3": "192", "mp4": "720p"},
@@ -43,6 +47,16 @@ class Config:
             )
         except OSError:
             pass  # не мешаем работе приложения, если диск недоступен
+
+    # --- профиль ----------------------------------------------------------
+    @property
+    def profile_name(self) -> str:
+        return self.data.get("profile_name", "")
+
+    @profile_name.setter
+    def profile_name(self, value: str):
+        self.data["profile_name"] = value
+        self.save()
 
     # --- папка загрузки -------------------------------------------------
     @property
@@ -112,4 +126,10 @@ class Config:
             self.data["history"].remove(entry)
         except ValueError:
             pass
+        self.save()
+
+    def clear_history(self, keep: list | None = None):
+        """Очистить историю, сохранив записи из keep (активные загрузки)."""
+        keep = keep or []
+        self.data["history"] = [e for e in self.data["history"] if e in keep]
         self.save()

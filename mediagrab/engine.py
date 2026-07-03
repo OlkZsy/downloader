@@ -25,9 +25,21 @@ import threading
 import time
 import traceback
 
-from .config import CONFIG_DIR
+from .config import CONFIG_DIR, COOKIES_DIR
 
 LOGS_DIR = CONFIG_DIR / "logs"
+
+
+def find_cookie_file(plugin):
+    """Файл cookies для сервиса: <id>.txt, иначе общий all.txt."""
+    candidates = []
+    if plugin is not None:
+        candidates.append(COOKIES_DIR / f"{plugin.id}.txt")
+    candidates.append(COOKIES_DIR / "all.txt")
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
 
 MP4_HEIGHTS = {"360p": 360, "480p": 480, "720p": 720, "1080p": 1080}
 MP3_BITRATES = ("128", "192", "320")
@@ -110,9 +122,11 @@ _HINTS = (
      "конкретное видео или трек, а не на профиль, поиск или главную "
      "страницу сервиса."),
     (("private", "login", "sign in", "logged in", "age", "nsfw",
-      "authentication", "account"),
+      "authentication", "account", "cookies"),
      "Контент приватный или с возрастным ограничением — сервис требует "
-     "вход в аккаунт, поэтому скачать его без авторизации нельзя."),
+     "вход в аккаунт. Если это ваш аккаунт, подключите cookies браузера: "
+     "инструкция в docs/COOKIES.md (папка cookies открывается через "
+     "кнопку 👤 → «Папка cookies»)."),
     (("429", "too many requests", "rate limit"),
      "Сервис временно ограничил количество запросов. Подождите "
      "несколько минут и попробуйте снова."),
@@ -240,6 +254,9 @@ class DownloadManager:
                 opts = build_options(fmt, quality, outdir)
                 if plugin:
                     opts = plugin.tweak_options(opts, fmt)
+                cookie_file = find_cookie_file(plugin)
+                if cookie_file:
+                    opts["cookiefile"] = str(cookie_file)
 
                 # 1) метаданные — из них имя файла и выбранные форматы
                 probe = {k: v for k, v in opts.items()
