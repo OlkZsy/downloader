@@ -21,6 +21,10 @@ class Spotify(ServicePlugin):
     url_patterns = [r"open\.spotify\.com/(intl-[a-z\-]+/)?track/"]
     supported_formats = ("mp3",)
     order = 15
+    error_hint = (
+        "Особенности Spotify: ссылка должна вести на один трек "
+        "(open.spotify.com/track/…). Плейлисты и альбомы пока не "
+        "поддерживаются.")
 
     def prepare(self, url: str) -> str:
         request = urllib.request.Request(

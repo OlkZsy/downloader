@@ -22,6 +22,8 @@ class ServicePlugin:
     supported_formats = ("mp3", "mp4")
     #: порядок в списке и при автоопределении (меньше — раньше)
     order = 100
+    #: подсказка, добавляемая к сообщению об ошибке загрузки
+    error_hint = ""
 
     def matches(self, url: str) -> bool:
         return any(re.search(p, url, re.IGNORECASE)

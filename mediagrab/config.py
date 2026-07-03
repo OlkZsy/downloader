@@ -92,8 +92,24 @@ class Config:
         return entry
 
     def update_history(self, entry: dict, status: str,
-                       filename: str | None = None):
+                       filename: str | None = None, *,
+                       error: str | None = None,
+                       hint: str | None = None,
+                       report_path: str | None = None):
         entry["status"] = status
         if filename:
             entry["file"] = filename
+        if error is not None:
+            entry["error"] = error
+        if hint is not None:
+            entry["hint"] = hint
+        if report_path is not None:
+            entry["report_path"] = report_path
+        self.save()
+
+    def remove_history(self, entry: dict):
+        try:
+            self.data["history"].remove(entry)
+        except ValueError:
+            pass
         self.save()

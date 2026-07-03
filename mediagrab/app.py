@@ -9,6 +9,9 @@
   * ниже — история загрузок и статус текущих: завершённые с галочкой.
 """
 
+import os
+import subprocess
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -49,6 +52,7 @@ class App(tk.Tk):
         self.current_format = self.config_store.format
         self.quality_panel_visible = False
         self.tasks = {}          # task_id -> {"item": id строки, "entry": dict истории}
+        self.row_entries = {}    # id строки таблицы -> dict записи истории
         self.service_buttons = {}
         self.format_buttons = {}
         self.quality_buttons = {}
@@ -111,6 +115,10 @@ class App(tk.Tk):
         entry.insert(0, "")
         self.url_entry = entry
         self._set_placeholder()
+        # Ctrl+V/C/X/A на любой раскладке клавиатуры (см. _on_ctrl_key)
+        entry.bind("<Control-KeyPress>", self._on_ctrl_key)
+        entry.bind("<Shift-Insert>", lambda _e: self._paste_into_entry())
+        self.bind("<Control-KeyPress>", self._on_ctrl_key_global)
 
         self.download_btn = tk.Button(
             row, text="➜", font=("TkDefaultFont", 14, "bold"),
@@ -187,6 +195,10 @@ class App(tk.Tk):
         self.tree.tag_configure("error", foreground=ERROR)
         self.tree.tag_configure("active", foreground=TEXT)
         self.tree.bind("<Double-1>", self._on_history_doubleclick)
+        self.tree.bind("<Button-3>", self._show_context_menu)
+        if sys.platform == "darwin":  # у macOS правая кнопка — Button-2
+            self.tree.bind("<Button-2>", self._show_context_menu)
+            self.tree.bind("<Control-Button-1>", self._show_context_menu)
 
     def _build_statusbar(self):
         bar = tk.Frame(self, bg=PANEL)
@@ -228,6 +240,50 @@ class App(tk.Tk):
     def _current_url(self) -> str:
         value = self.url_var.get().strip()
         return "" if value == self.PLACEHOLDER else value
+
+    # ------------------------------------------------------------------
+    # буфер обмена на любой раскладке
+    # ------------------------------------------------------------------
+    # Стандартные привязки Tk (Ctrl+V и т. п.) работают только на
+    # латинской раскладке. Управляющий код нажатой клавиши (event.char)
+    # от раскладки не зависит: Ctrl+V всегда даёт \x16, Ctrl+C — \x03,
+    # Ctrl+X — \x18, Ctrl+A — \x01.
+    def _on_ctrl_key(self, event):
+        char = event.char
+        if char == "\x16":
+            return self._paste_into_entry()
+        if char == "\x03":
+            self.url_entry.event_generate("<<Copy>>")
+            return "break"
+        if char == "\x18":
+            self.url_entry.event_generate("<<Cut>>")
+            return "break"
+        if char == "\x01":
+            self.url_entry.select_range(0, "end")
+            self.url_entry.icursor("end")
+            return "break"
+        return None
+
+    def _on_ctrl_key_global(self, event):
+        # Ctrl+V, когда фокус не в строке ввода — вставляем в неё
+        if event.char == "\x16" and event.widget is not self.url_entry:
+            self.url_entry.focus_set()
+            return self._paste_into_entry()
+        return None
+
+    def _paste_into_entry(self):
+        try:
+            text = self.clipboard_get()
+        except tk.TclError:
+            return "break"
+        self._clear_placeholder()
+        try:
+            self.url_entry.delete("sel.first", "sel.last")
+        except tk.TclError:
+            pass  # нет выделения
+        self.url_entry.insert("insert", text.strip())
+        self.url_entry.configure(fg=TEXT)
+        return "break"
 
     # ------------------------------------------------------------------
     # выбор сервиса / формата / качества / папки
@@ -348,6 +404,7 @@ class App(tk.Tk):
         task_id = self.manager.submit(url, plugin, fmt, quality,
                                       self.config_store.download_dir)
         self.tasks[task_id] = {"item": item, "entry": entry}
+        self.row_entries[item] = entry
 
         self.url_var.set("")
         self.url_entry.focus_set()
@@ -370,13 +427,20 @@ class App(tk.Tk):
                 self.tree.set(item, "status", STATUS_DONE)
                 self.tree.item(item, tags=("done",))
                 self.config_store.update_history(entry, "done", payload)
-                self._update_statusbar(f"Готово: {payload or entry['url']}")
+                name = os.path.basename(payload) if payload else entry["url"]
+                self._update_statusbar(f"Готово: {name}")
                 del self.tasks[task_id]
             elif event == "error":
                 self.tree.set(item, "status", STATUS_ERROR)
                 self.tree.item(item, tags=("error",))
-                self.config_store.update_history(entry, "error")
-                self._update_statusbar(f"Ошибка: {payload}")
+                self.config_store.update_history(
+                    entry, "error",
+                    error=payload.get("message"),
+                    hint=payload.get("hint"),
+                    report_path=payload.get("report_path"))
+                self._update_statusbar(
+                    "Ошибка. Правый клик по строке → «Почему не "
+                    "скачалось…» — причина и отчёт")
                 del self.tasks[task_id]
         self.after(150, self._poll_events)
 
@@ -392,11 +456,12 @@ class App(tk.Tk):
                 text, tag = STATUS_ERROR, "error"
             else:  # незавершённые с прошлого запуска
                 text, tag = STATUS_ERROR, "error"
-            self.tree.insert(
+            item = self.tree.insert(
                 "", "end",
                 values=(record.get("url", ""), record.get("service", ""),
                         record.get("format", ""), text),
                 tags=(tag,))
+            self.row_entries[item] = record
 
     def _on_history_doubleclick(self, _event):
         selection = self.tree.selection()
@@ -406,6 +471,168 @@ class App(tk.Tk):
             self.url_var.set(url)
             self.url_entry.configure(fg=TEXT)
             self.url_entry.focus_set()
+
+    # ------------------------------------------------------------------
+    # контекстное меню истории (правый клик)
+    # ------------------------------------------------------------------
+    def _show_context_menu(self, event):
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+        self.tree.selection_set(item)
+        entry = self.row_entries.get(item)
+        if entry is None:
+            return
+        menu = tk.Menu(self, tearoff=0)
+        if entry.get("status") == "done" and entry.get("file"):
+            menu.add_command(
+                label="Открыть",
+                command=lambda: self._open_file(entry["file"]))
+            menu.add_command(
+                label="Показать в папке",
+                command=lambda: self._reveal_file(entry["file"]))
+            menu.add_separator()
+        if entry.get("status") == "error" and entry.get("error"):
+            menu.add_command(
+                label="Почему не скачалось…",
+                command=lambda: self._show_error_details(entry))
+            menu.add_separator()
+        menu.add_command(
+            label="Копировать ссылку",
+            command=lambda: self._copy_url(entry.get("url", "")))
+        is_active = any(t["item"] == item for t in self.tasks.values())
+        if not is_active:
+            menu.add_command(
+                label="Удалить из истории", foreground=ERROR,
+                activeforeground=ERROR,
+                command=lambda: self._delete_history_row(item, entry))
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _copy_url(self, url: str):
+        self.clipboard_clear()
+        self.clipboard_append(url)
+        self._update_statusbar("Ссылка скопирована в буфер обмена")
+
+    def _resolve_file(self, filepath: str):
+        if not filepath:
+            return None
+        if not os.path.isabs(filepath):
+            # старые записи истории хранили только имя файла
+            filepath = os.path.join(self.config_store.download_dir, filepath)
+        return filepath if os.path.exists(filepath) else None
+
+    def _open_file(self, filepath: str):
+        path = self._resolve_file(filepath)
+        if not path:
+            messagebox.showinfo(
+                "MediaGrab", "Файл не найден — возможно, он был "
+                "перемещён или удалён.")
+            return
+        self._open_in_system(path)
+
+    def _reveal_file(self, filepath: str):
+        path = self._resolve_file(filepath)
+        if not path:
+            messagebox.showinfo(
+                "MediaGrab", "Файл не найден — возможно, он был "
+                "перемещён или удалён.")
+            return
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", "/select,", path])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", path])
+        else:
+            self._open_in_system(os.path.dirname(path))
+
+    @staticmethod
+    def _open_in_system(path: str):
+        if sys.platform == "win32":
+            os.startfile(path)  # noqa: S606 — открытие файла системой
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+
+    def _delete_history_row(self, item, entry):
+        self.config_store.remove_history(entry)
+        self.row_entries.pop(item, None)
+        self.tree.delete(item)
+
+    # ------------------------------------------------------------------
+    # окно «почему не скачалось»
+    # ------------------------------------------------------------------
+    def _show_error_details(self, entry: dict):
+        win = tk.Toplevel(self)
+        win.title("Почему не скачалось")
+        win.configure(bg=BG)
+        win.geometry("600x430")
+        win.transient(self)
+
+        tk.Label(win, text=entry.get("url", ""), bg=BG, fg=MUTED,
+                 wraplength=560, justify="left",
+                 font=("TkDefaultFont", 9)).pack(
+            anchor="w", padx=16, pady=(12, 2))
+
+        tk.Label(win, text="Что можно сделать", bg=BG, fg=ACCENT_DARK,
+                 font=("TkDefaultFont", 10, "bold")).pack(
+            anchor="w", padx=16, pady=(8, 2))
+        tk.Label(win, text=entry.get("hint") or "Причина неизвестна.",
+                 bg=BG, fg=TEXT, wraplength=560, justify="left").pack(
+            anchor="w", padx=16)
+
+        tk.Label(win, text="Текст ошибки", bg=BG, fg=MUTED,
+                 font=("TkDefaultFont", 10, "bold")).pack(
+            anchor="w", padx=16, pady=(12, 2))
+        text = tk.Text(win, height=5, wrap="word", bg=CARD, fg=ERROR,
+                       relief="solid", bd=1, font=("TkDefaultFont", 9))
+        text.insert("1.0", entry.get("error") or "")
+        text.configure(state="disabled")
+        text.pack(fill="x", padx=16)
+
+        report_path = entry.get("report_path") or ""
+        if report_path:
+            tk.Label(win, text=f"Полный отчёт: {report_path}", bg=BG,
+                     fg=MUTED, wraplength=560, justify="left",
+                     font=("TkDefaultFont", 8)).pack(
+                anchor="w", padx=16, pady=(6, 0))
+
+        buttons = tk.Frame(win, bg=BG)
+        buttons.pack(fill="x", padx=16, pady=14)
+        tk.Button(buttons, text="Скопировать отчёт", bg=ACCENT, fg="white",
+                  relief="flat", cursor="hand2", padx=10,
+                  command=lambda: self._copy_report(entry)).pack(side="left")
+        if report_path:
+            tk.Button(buttons, text="Открыть папку отчётов", bg=CARD,
+                      fg=TEXT, relief="solid", bd=1, cursor="hand2",
+                      padx=10,
+                      command=lambda: self._open_in_system(
+                          os.path.dirname(report_path))).pack(
+                side="left", padx=8)
+        tk.Button(buttons, text="Закрыть", bg=CARD, fg=TEXT,
+                  relief="solid", bd=1, cursor="hand2", padx=10,
+                  command=win.destroy).pack(side="right")
+
+    def _copy_report(self, entry: dict):
+        report = ""
+        path = entry.get("report_path") or ""
+        if path and os.path.exists(path):
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    report = fh.read()
+            except OSError:
+                report = ""
+        if not report:
+            report = "\n".join(filter(None, [
+                "MediaGrab — ошибка загрузки",
+                f"Ссылка: {entry.get('url', '')}",
+                f"Сервис: {entry.get('service', '')}",
+                f"Формат: {entry.get('format', '')}",
+                f"Ошибка: {entry.get('error', '')}",
+            ]))
+        self.clipboard_clear()
+        self.clipboard_append(report)
+        self._update_statusbar(
+            "Отчёт скопирован — можно вставить в сообщение разработчику")
 
     # ------------------------------------------------------------------
     def _check_dependencies(self):
