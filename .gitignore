@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.mp3
+*.mp4
+*.part
+*.webm
+*.m4a
