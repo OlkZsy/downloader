@@ -1,12 +1,13 @@
-"""Графический интерфейс MediaGrab (Tkinter).
+"""MediaGrab graphical interface (Tkinter).
 
-Раскладка повторяет эскиз:
-  * слева — панель выбора сервиса;
-  * сверху — строка для ссылки, кнопка загрузки «➜» и кнопка «…»
-    выбора папки (папка запоминается между запусками);
-  * под строкой — переключатель mp3/mp4, активный формат подсвечен
-    зелёным; по клику выезжает панелька выбора качества;
-  * ниже — история загрузок и статус текущих: завершённые с галочкой.
+The layout follows the original sketch:
+  * left — service selection panel;
+  * top — the link input row, the "➜" download button and the "…"
+    folder picker (the folder is remembered between runs);
+  * below the input — the mp3/mp4 switch with the active format
+    highlighted in green; clicking it slides out a quality panel;
+  * below that — download history and current status: finished
+    items get a check mark.
 """
 
 import os
@@ -21,11 +22,11 @@ from .engine import MP3_BITRATES, MP4_QUALITIES, DownloadManager
 from .version import check_remote, local_version
 from . import services
 
-# --- палитра (светлая, зелёный акцент) ---------------------------------
-BG = "#f5f9f5"          # фон окна
-PANEL = "#e8f2e8"       # боковая панель
-CARD = "#ffffff"        # поля ввода / список
-ACCENT = "#2e7d32"      # основной зелёный
+# --- palette (light theme, green accent) --------------------------------
+BG = "#f5f9f5"          # window background
+PANEL = "#e8f2e8"       # sidebar
+CARD = "#ffffff"        # input fields / list
+ACCENT = "#2e7d32"      # primary green
 ACCENT_DARK = "#1b5e20"
 ACCENT_SOFT = "#c8e6c9"
 TEXT = "#1c231c"
@@ -53,14 +54,14 @@ class App(tk.Tk):
         self.selected_service = AUTO_ID
         self.current_format = self.config_store.format
         self.quality_panel_visible = False
-        self.tasks = {}          # task_id -> {"item": id строки, "entry": dict истории}
-        self.row_entries = {}    # id строки таблицы -> dict записи истории
+        self.tasks = {}          # task_id -> {"item": tree row id, "entry": history dict}
+        self.row_entries = {}    # tree row id -> history entry dict
         self.service_buttons = {}
         self.format_buttons = {}
         self.quality_buttons = {}
 
-        self.latest_version = None    # новая версия на GitHub (если есть)
-        self._version_note = None     # результат фоновой проверки
+        self.latest_version = None    # newer version on GitHub (if any)
+        self._version_note = None     # background check result
         self._version_shown = False
 
         self._build_statusbar()
@@ -73,7 +74,7 @@ class App(tk.Tk):
                          daemon=True).start()
 
     # ------------------------------------------------------------------
-    # построение интерфейса
+    # interface construction
     # ------------------------------------------------------------------
     def _build_sidebar(self):
         sidebar = tk.Frame(self, bg=PANEL, width=180)
@@ -108,7 +109,7 @@ class App(tk.Tk):
         main = tk.Frame(self, bg=BG)
         main.pack(side="left", fill="both", expand=True, padx=16, pady=14)
 
-        # --- строка ссылки -------------------------------------------
+        # --- link input row -------------------------------------------
         row = tk.Frame(main, bg=BG)
         row.pack(fill="x")
 
@@ -123,7 +124,7 @@ class App(tk.Tk):
         entry.insert(0, "")
         self.url_entry = entry
         self._set_placeholder()
-        # Ctrl+V/C/X/A на любой раскладке клавиатуры (см. _on_ctrl_key)
+        # Ctrl+V/C/X/A on any keyboard layout (see _on_ctrl_key)
         entry.bind("<Control-KeyPress>", self._on_ctrl_key)
         entry.bind("<Shift-Insert>", lambda _e: self._paste_into_entry())
         self.bind("<Control-KeyPress>", self._on_ctrl_key_global)
@@ -147,10 +148,10 @@ class App(tk.Tk):
             width=3, command=self._show_profile)
         profile_btn.pack(side="left", padx=(8, 0))
 
-        # --- переключатель формата -----------------------------------
+        # --- format switch --------------------------------------------
         fmt_row = tk.Frame(main, bg=BG)
         fmt_row.pack(fill="x", pady=(10, 0))
-        tk.Frame(fmt_row, bg=BG).pack(side="left", expand=True)  # прижать вправо
+        tk.Frame(fmt_row, bg=BG).pack(side="left", expand=True)  # push right
         for fmt in ("mp3", "mp4"):
             btn = tk.Button(
                 fmt_row, text=fmt, font=("TkDefaultFont", 11, "bold"),
@@ -159,9 +160,9 @@ class App(tk.Tk):
             btn.pack(side="left", padx=4)
             self.format_buttons[fmt] = btn
 
-        # --- выезжающая панель качества ------------------------------
-        # слот фиксирует место панели сразу под кнопками формата,
-        # чтобы pack() при показе не отправлял её в конец окна
+        # --- slide-out quality panel ----------------------------------
+        # the slot pins the panel's place right under the format
+        # buttons, so pack() on show does not send it to the window end
         self.quality_slot = tk.Frame(main, bg=BG)
         self.quality_slot.pack(fill="x")
         self.quality_panel = tk.Frame(self.quality_slot, bg=ACCENT_SOFT)
@@ -172,7 +173,7 @@ class App(tk.Tk):
             side="right", padx=(0, 4))
         self._style_format_buttons()
 
-        # --- история -------------------------------------------------
+        # --- history ---------------------------------------------------
         tk.Label(main, text="История и статус загрузок", bg=BG, fg=MUTED,
                  font=("TkDefaultFont", 10, "bold"),
                  anchor="w").pack(fill="x", pady=(14, 4))
@@ -210,7 +211,7 @@ class App(tk.Tk):
         self.tree.tag_configure("active", foreground=TEXT)
         self.tree.bind("<Double-1>", self._on_history_doubleclick)
         self.tree.bind("<Button-3>", self._show_context_menu)
-        if sys.platform == "darwin":  # у macOS правая кнопка — Button-2
+        if sys.platform == "darwin":  # on macOS right-click is Button-2
             self.tree.bind("<Button-2>", self._show_context_menu)
             self.tree.bind("<Control-Button-1>", self._show_context_menu)
 
@@ -230,7 +231,7 @@ class App(tk.Tk):
         self.status_var.set(text)
 
     # ------------------------------------------------------------------
-    # placeholder строки ввода
+    # input placeholder
     # ------------------------------------------------------------------
     PLACEHOLDER = "Вставьте ссылку на видео или музыку…"
 
@@ -256,11 +257,11 @@ class App(tk.Tk):
         return "" if value == self.PLACEHOLDER else value
 
     # ------------------------------------------------------------------
-    # буфер обмена на любой раскладке
+    # clipboard on any keyboard layout
     # ------------------------------------------------------------------
-    # Стандартные привязки Tk (Ctrl+V и т. п.) работают только на
-    # латинской раскладке. Управляющий код нажатой клавиши (event.char)
-    # от раскладки не зависит: Ctrl+V всегда даёт \x16, Ctrl+C — \x03,
+    # Standard Tk bindings (Ctrl+V etc.) only work on the latin layout.
+    # The control code of the pressed key (event.char) does not depend
+    # on the layout: Ctrl+V always yields \x16, Ctrl+C — \x03,
     # Ctrl+X — \x18, Ctrl+A — \x01.
     def _on_ctrl_key(self, event):
         char = event.char
@@ -279,7 +280,7 @@ class App(tk.Tk):
         return None
 
     def _on_ctrl_key_global(self, event):
-        # Ctrl+V, когда фокус не в строке ввода — вставляем в неё
+        # Ctrl+V while focus is elsewhere — paste into the input anyway
         if event.char == "\x16" and event.widget is not self.url_entry:
             self.url_entry.focus_set()
             return self._paste_into_entry()
@@ -294,13 +295,13 @@ class App(tk.Tk):
         try:
             self.url_entry.delete("sel.first", "sel.last")
         except tk.TclError:
-            pass  # нет выделения
+            pass  # no selection
         self.url_entry.insert("insert", text.strip())
         self.url_entry.configure(fg=TEXT)
         return "break"
 
     # ------------------------------------------------------------------
-    # выбор сервиса / формата / качества / папки
+    # service / format / quality / folder selection
     # ------------------------------------------------------------------
     def _select_service(self, service_id):
         self.selected_service = service_id
@@ -317,7 +318,7 @@ class App(tk.Tk):
 
     def _select_format(self, fmt):
         if fmt == self.current_format:
-            # повторный клик по активному формату — показать/спрятать качество
+            # second click on the active format toggles the quality panel
             self._toggle_quality_panel()
         else:
             self.current_format = fmt
@@ -379,7 +380,7 @@ class App(tk.Tk):
             self._update_statusbar()
 
     # ------------------------------------------------------------------
-    # загрузка
+    # downloading
     # ------------------------------------------------------------------
     def _start_download(self):
         url = self._current_url()
@@ -399,7 +400,7 @@ class App(tk.Tk):
             if plugin and not plugin.matches(url):
                 detected = services.detect(url)
                 if detected:
-                    plugin = detected  # ссылка с другого сервиса — доверяем ей
+                    plugin = detected  # link from another service — trust it
 
         fmt = self.current_format
         note = ""
@@ -465,7 +466,7 @@ class App(tk.Tk):
         self.after(150, self._poll_events)
 
     # ------------------------------------------------------------------
-    # история
+    # history
     # ------------------------------------------------------------------
     def _load_history(self):
         for record in self.config_store.history:
@@ -474,7 +475,7 @@ class App(tk.Tk):
                 text, tag = STATUS_DONE, "done"
             elif status == "error":
                 text, tag = STATUS_ERROR, "error"
-            else:  # незавершённые с прошлого запуска
+            else:  # left unfinished by a previous run
                 text, tag = STATUS_ERROR, "error"
             item = self.tree.insert(
                 "", "end",
@@ -493,7 +494,7 @@ class App(tk.Tk):
             self.url_entry.focus_set()
 
     # ------------------------------------------------------------------
-    # контекстное меню истории (правый клик)
+    # history context menu (right-click)
     # ------------------------------------------------------------------
     def _show_context_menu(self, event):
         item = self.tree.identify_row(event.y)
@@ -537,7 +538,7 @@ class App(tk.Tk):
         if not filepath:
             return None
         if not os.path.isabs(filepath):
-            # старые записи истории хранили только имя файла
+            # older history entries stored just the file name
             filepath = os.path.join(self.config_store.download_dir, filepath)
         return filepath if os.path.exists(filepath) else None
 
@@ -567,7 +568,7 @@ class App(tk.Tk):
     @staticmethod
     def _open_in_system(path: str):
         if sys.platform == "win32":
-            os.startfile(path)  # noqa: S606 — открытие файла системой
+            os.startfile(path)  # noqa: S606 — open the file via the OS
         elif sys.platform == "darwin":
             subprocess.Popen(["open", path])
         else:
@@ -579,7 +580,7 @@ class App(tk.Tk):
         self.tree.delete(item)
 
     # ------------------------------------------------------------------
-    # окно «почему не скачалось»
+    # "why it did not download" window
     # ------------------------------------------------------------------
     def _show_error_details(self, entry: dict):
         win = tk.Toplevel(self)
@@ -655,13 +656,13 @@ class App(tk.Tk):
             "Отчёт скопирован — можно вставить в сообщение разработчику")
 
     # ------------------------------------------------------------------
-    # профиль и настройки
+    # profile and settings
     # ------------------------------------------------------------------
     def _check_updates_bg(self):
-        """Фоновая проверка новой версии на GitHub (не мешает работе)."""
+        """Background check for a new version on GitHub (non-blocking)."""
         try:
             self._version_note = check_remote()
-        except Exception:  # noqa: BLE001 — нет сети и т. п.: молча пропускаем
+        except Exception:  # noqa: BLE001 — no network etc.: skip silently
             self._version_note = None
 
     def _show_profile(self):
@@ -677,7 +678,7 @@ class App(tk.Tk):
                      font=("TkDefaultFont", 10, "bold")).pack(
                 anchor="w", padx=16, pady=(14, 4))
 
-        # --- профиль --------------------------------------------------
+        # --- profile ---------------------------------------------------
         section("Профиль")
         name_row = tk.Frame(win, bg=BG)
         name_row.pack(fill="x", padx=16)
@@ -695,7 +696,7 @@ class App(tk.Tk):
         win.protocol("WM_DELETE_WINDOW",
                      lambda: (save_name(), win.destroy()))
 
-        # --- версия ----------------------------------------------------
+        # --- version ---------------------------------------------------
         section("Версия приложения")
         if self.latest_version:
             version_text = (
@@ -711,7 +712,7 @@ class App(tk.Tk):
         tk.Label(win, text=version_text, bg=BG, fg=version_color,
                  wraplength=560, justify="left").pack(anchor="w", padx=16)
 
-        # --- загрузки ---------------------------------------------------
+        # --- downloads ---------------------------------------------------
         section("Загрузки")
         folder_var = tk.StringVar(
             value=f"Папка: {self.config_store.download_dir}")
@@ -736,7 +737,7 @@ class App(tk.Tk):
                   relief="solid", bd=1, cursor="hand2", padx=8,
                   command=self._clear_history_ui).pack(side="left", padx=8)
 
-        # --- данные профиля ---------------------------------------------
+        # --- profile data ------------------------------------------------
         section("Данные профиля")
         tk.Label(win, text=(
             "Все данные — настройки, история, cookies, отчёты об ошибках — "

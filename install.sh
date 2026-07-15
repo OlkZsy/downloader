@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Установка MediaGrab для Linux/macOS:
+# MediaGrab installer for Linux/macOS:
 #   chmod +x install.sh && ./install.sh
 set -e
 cd "$(dirname "$0")"

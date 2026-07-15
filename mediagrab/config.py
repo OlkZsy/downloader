@@ -1,8 +1,8 @@
-"""Настройки и история загрузок.
+"""Settings and download history.
 
-Хранятся в JSON-файле в домашней папке пользователя
-(~/.mediagrab/config.json), поэтому папка загрузки, выбранный формат,
-качество и история переживают закрытие приложения.
+Stored as a JSON file in the user's home directory
+(~/.mediagrab/config.json), so the download folder, selected format,
+quality and history survive closing the application.
 """
 
 import json
@@ -11,8 +11,8 @@ from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".mediagrab"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-#: cookies браузера для сервисов, требующих вход: <id сервиса>.txt
-#: (например x.txt) или all.txt для всех сервисов; см. docs/COOKIES.md
+#: browser cookies for services that require signing in: <service id>.txt
+#: (e.g. x.txt) or all.txt for every service; see docs/COOKIES.md
 COOKIES_DIR = CONFIG_DIR / "cookies"
 
 MAX_HISTORY = 200
@@ -28,7 +28,7 @@ DEFAULTS = {
 
 class Config:
     def __init__(self):
-        self.data = json.loads(json.dumps(DEFAULTS))  # глубокая копия
+        self.data = json.loads(json.dumps(DEFAULTS))  # deep copy
         if CONFIG_FILE.exists():
             try:
                 stored = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
@@ -36,7 +36,7 @@ class Config:
                     if key in stored:
                         self.data[key] = stored[key]
             except (json.JSONDecodeError, OSError):
-                pass  # повреждённый конфиг — начинаем с настроек по умолчанию
+                pass  # corrupted config — start from defaults
 
     def save(self):
         try:
@@ -46,9 +46,9 @@ class Config:
                 encoding="utf-8",
             )
         except OSError:
-            pass  # не мешаем работе приложения, если диск недоступен
+            pass  # an unavailable disk must not break the app
 
-    # --- профиль ----------------------------------------------------------
+    # --- profile ----------------------------------------------------------
     @property
     def profile_name(self) -> str:
         return self.data.get("profile_name", "")
@@ -58,7 +58,7 @@ class Config:
         self.data["profile_name"] = value
         self.save()
 
-    # --- папка загрузки -------------------------------------------------
+    # --- download folder --------------------------------------------------
     @property
     def download_dir(self) -> str:
         return self.data["download_dir"]
@@ -68,7 +68,7 @@ class Config:
         self.data["download_dir"] = value
         self.save()
 
-    # --- формат и качество ----------------------------------------------
+    # --- format and quality -----------------------------------------------
     @property
     def format(self) -> str:
         return self.data["format"]
@@ -85,7 +85,7 @@ class Config:
         self.data["quality"][fmt] = value
         self.save()
 
-    # --- история ----------------------------------------------------------
+    # --- history ------------------------------------------------------------
     @property
     def history(self) -> list:
         return self.data["history"]
@@ -129,7 +129,7 @@ class Config:
         self.save()
 
     def clear_history(self, keep: list | None = None):
-        """Очистить историю, сохранив записи из keep (активные загрузки)."""
+        """Clear the history, keeping the entries in keep (active jobs)."""
         keep = keep or []
         self.data["history"] = [e for e in self.data["history"] if e in keep]
         self.save()

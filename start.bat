@@ -1,5 +1,5 @@
 @echo off
-rem Запуск MediaGrab (сначала выполните install.bat)
+rem Launch MediaGrab (run install.bat first)
 cd /d "%~dp0"
 if not exist .venv\Scripts\activate.bat (
     echo Сначала запустите install.bat

@@ -1,3 +1,3 @@
-"""MediaGrab — загрузчик mp3/mp4 из популярных сервисов."""
+"""MediaGrab — mp3/mp4 downloader for popular services."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

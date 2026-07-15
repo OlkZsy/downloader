@@ -1,73 +1,72 @@
-# Как подключить к проекту другого человека
+# How to invite another person to the project
 
-Есть два стандартных способа совместной работы над репозиторием GitHub.
+There are two standard ways to collaborate on a GitHub repository.
 
-## Способ 1. Добавить соавтора (полный доступ на запись)
+## Option 1. Add a collaborator (full write access)
 
-Подходит, когда вы доверяете человеку и хотите, чтобы он коммитил прямо
-в репозиторий.
+Suitable when you trust the person and want them to commit directly to
+the repository.
 
-1. Откройте репозиторий на GitHub (например,
+1. Open the repository on GitHub (e.g.
    `https://github.com/OlkZsy/downloader`).
-2. Вкладка **Settings** (шестерёнка, справа в верхнем меню репозитория).
-3. Слева выберите **Collaborators** (раздел *Access*). GitHub может
-   попросить подтвердить пароль или код.
-4. Нажмите зелёную кнопку **Add people**.
-5. Введите **имя пользователя GitHub** (или e-mail) человека и выберите
-   его в списке.
-6. Нажмите **Add … to this repository**.
-7. Человеку придёт приглашение на почту и в уведомления GitHub — он
-   должен нажать **Accept invitation**. До принятия приглашения доступа
-   нет.
+2. Go to the **Settings** tab (the gear in the repository's top menu).
+3. Pick **Collaborators** on the left (the *Access* section). GitHub
+   may ask you to confirm your password or a code.
+4. Press the green **Add people** button.
+5. Enter the person's **GitHub username** (or e-mail) and select them
+   in the list.
+6. Press **Add … to this repository**.
+7. The person receives an invitation by e-mail and in their GitHub
+   notifications — they must press **Accept invitation**. There is no
+   access until the invitation is accepted.
 
-После этого соавтор может клонировать репозиторий и пушить изменения:
+After that the collaborator can clone the repository and push changes:
 
 ```bash
 git clone https://github.com/OlkZsy/downloader.git
 cd downloader
-# ... правки ...
+# ... edits ...
 git add -A
-git commit -m "Описание изменений"
+git commit -m "Describe the change"
 git push
 ```
 
-> Совет: даже с двумя участниками удобно работать через ветки и pull
-> request'ы, а не коммитить напрямую в `main` — так изменения можно
-> просматривать до слияния.
+> Tip: even with two participants it pays off to work through branches
+> and pull requests instead of committing straight to `main` — changes
+> can then be reviewed before merging.
 
-## Способ 2. Fork + Pull Request (без выдачи доступа)
+## Option 2. Fork + Pull Request (no access granted)
 
-Подходит для внешних участников: доступ к вашему репозиторию им не
-нужен.
+Suitable for external contributors: they need no access to your
+repository at all.
 
-Участник:
+The contributor:
 
-1. Нажимает **Fork** на странице вашего репозитория — у него появляется
-   собственная копия.
-2. Клонирует свой fork, создаёт ветку и вносит изменения:
+1. Presses **Fork** on your repository page — they get their own copy.
+2. Clones their fork, creates a branch and makes the changes:
    ```bash
-   git clone https://github.com/ИМЯ_УЧАСТНИКА/downloader.git
+   git clone https://github.com/CONTRIBUTOR_NAME/downloader.git
    cd downloader
    git checkout -b add-soundcloud
-   # ... правки ...
-   git commit -am "Добавлен плагин SoundCloud"
+   # ... edits ...
+   git commit -am "Add the SoundCloud plugin"
    git push -u origin add-soundcloud
    ```
-3. На GitHub нажимает **Compare & pull request** и отправляет PR в ваш
-   репозиторий.
+3. Presses **Compare & pull request** on GitHub and submits the PR to
+   your repository.
 
-Вы:
+You:
 
-1. Открываете вкладку **Pull requests** своего репозитория.
-2. Просматриваете изменения (вкладка *Files changed*), при необходимости
-   оставляете комментарии.
-3. Нажимаете **Merge pull request**, когда всё устраивает.
+1. Open the **Pull requests** tab of your repository.
+2. Review the changes (the *Files changed* tab), leaving comments where
+   needed.
+3. Press **Merge pull request** once everything looks good.
 
-## Полезные настройки для совместной работы
+## Useful settings for collaboration
 
-- **Settings → Branches → Add branch ruleset**: защитите ветку `main`,
-  включив требование pull request перед слиянием.
-- **Issues**: включите вкладку Issues (Settings → General → Features),
-  чтобы вести список задач и багов прямо в репозитории.
-- Задачи новым участникам удобно описывать в Issues и помечать меткой
+- **Settings → Branches → Add branch ruleset**: protect the `main`
+  branch by requiring a pull request before merging.
+- **Issues**: enable the Issues tab (Settings → General → Features) to
+  track tasks and bugs right in the repository.
+- Tasks for new contributors are best described in Issues and labeled
   `good first issue`.

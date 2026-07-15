@@ -9,7 +9,7 @@ class YouTube(ServicePlugin):
     order = 10
 
     def matches(self, url: str) -> bool:
-        # music.youtube.com обрабатывает отдельный плагин
+        # music.youtube.com is handled by a separate plugin
         if "music.youtube.com" in url.lower():
             return False
         return super().matches(url)

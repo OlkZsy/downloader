@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Запуск MediaGrab: python run.py"""
+"""Launch MediaGrab: python run.py"""
 
 import os
 import sys

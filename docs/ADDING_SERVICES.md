@@ -1,60 +1,62 @@
-# Как добавить новый сервис
+# How to add a new service
 
-Архитектура плагинов устроена так, что новый сервис = **один файл** в
-папке `mediagrab/services/`. Приложение при запуске само находит все
-файлы в этой папке и добавляет сервисы в боковую панель — ничего
-регистрировать не нужно.
+The plugin architecture makes a new service = **one file** in the
+`mediagrab/services/` folder. On startup the application discovers all
+files in that folder and adds the services to the sidebar — no
+registration needed anywhere.
 
-## Шаг 1. Скопируйте шаблон
+## Step 1. Copy the template
 
-Возьмите `mediagrab/services/_template.py` и сохраните под новым именем,
-например `soundcloud.py`. Имя файла **не должно** начинаться с `_`
-(такие файлы игнорируются) и не должно быть `base.py`.
+Take `mediagrab/services/_template.py` and save it under a new name,
+e.g. `soundcloud.py`. The file name must **not** start with `_`
+(such files are ignored) and must not be `base.py`.
 
-## Шаг 2. Заполните поля
+## Step 2. Fill in the fields
 
 ```python
 from .base import ServicePlugin
 
 
 class SoundCloud(ServicePlugin):
-    id = "soundcloud"                    # уникальный id, латиницей
-    name = "SoundCloud"                  # имя в боковой панели
-    url_patterns = [r"soundcloud\.com/"] # регулярки для ссылок
-    supported_formats = ("mp3",)         # ("mp3",), ("mp4",) или оба
-    order = 50                           # позиция в списке (меньше = выше)
+    id = "soundcloud"                    # unique id, latin letters
+    name = "SoundCloud"                  # name shown in the sidebar
+    url_patterns = [r"soundcloud\.com/"] # regexes for the service's links
+    supported_formats = ("mp3",)         # ("mp3",), ("mp4",) or both
+    order = 50                           # position in the list (lower = higher)
 
 
 PLUGIN = SoundCloud()
 ```
 
-Переменная `PLUGIN` в конце файла обязательна — именно её находит реестр.
+The `PLUGIN` variable at the end of the file is mandatory — that is
+what the registry looks for.
 
-Этого уже достаточно: скачивание выполняет yt-dlp, который «из коробки»
-поддерживает более 1000 сайтов
-([полный список](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)).
-Плагин нужен, чтобы сервис появился в панели, правильно определялся по
-ссылке и при необходимости получил особую логику.
+This alone is enough: the downloading is done by yt-dlp, which supports
+more than 1000 sites out of the box
+([full list](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)).
+The plugin's job is to show the service in the panel, detect it from
+links and, when needed, add special logic.
 
-## Шаг 3 (необязательно). Особая логика
+## Step 3 (optional). Special logic
 
-В базовом классе `ServicePlugin` (файл `base.py`) есть два метода для
-переопределения:
+The `ServicePlugin` base class (`base.py`) has two methods to override:
 
 ### `prepare(self, url) -> str`
 
-Вызывается перед загрузкой в фоновом потоке — здесь можно делать сетевые
-запросы. Должен вернуть то, что реально скачивать: обычно тот же URL, но
-можно вернуть и поисковый запрос yt-dlp.
+Called before the download in a background thread — network requests
+are fine here. Must return what should actually be downloaded: usually
+the same URL, but a yt-dlp search query works too.
 
-Пример — плагин Spotify (`spotify.py`): по ссылке Spotify получает
-название трека через открытый oEmbed-API и возвращает
-`"ytsearch1:<название>"`, чтобы yt-dlp нашёл и скачал трек с YouTube.
+Example — the Spotify plugin (`spotify.py`): it resolves a Spotify link
+into the track title via the public oEmbed API and returns
+`"ytsearch1:<title>"`, so yt-dlp finds and downloads the track from
+YouTube.
 
 ### `tweak_options(self, options, fmt) -> dict`
 
-Позволяет изменить [опции yt-dlp](https://github.com/yt-dlp/yt-dlp#usage-and-options)
-под особенности сервиса:
+Lets you adjust the
+[yt-dlp options](https://github.com/yt-dlp/yt-dlp#usage-and-options)
+for the service's quirks:
 
 ```python
 def tweak_options(self, options, fmt):
@@ -62,16 +64,20 @@ def tweak_options(self, options, fmt):
     return options
 ```
 
-## Шаг 4. Проверьте
+There is also an `error_hint` attribute — a text appended to error
+messages for this service (e.g. a reminder that private content needs
+cookies).
 
-Перезапустите приложение (`start.bat` / `./start.sh`) — новый сервис
-появится в боковой панели. Вставьте ссылку сервиса и убедитесь, что в
-режиме «Авто» он определяется (колонка «Сервис» в истории).
+## Step 4. Verify
 
-## Мини-чеклист для pull request
+Restart the application (`start.bat` / `./start.sh`) — the new service
+appears in the sidebar. Paste one of the service's links and check that
+the "Auto" mode detects it (the "Сервис" column in the history).
 
-- [ ] файл называется по имени сервиса, без `_` в начале;
-- [ ] `id` уникален (не совпадает с существующими плагинами);
-- [ ] `url_patterns` не перехватывают чужие ссылки;
-- [ ] в конце файла есть `PLUGIN = ИмяКласса()`;
-- [ ] загрузка проверена хотя бы на одной реальной ссылке.
+## Mini-checklist for a pull request
+
+- [ ] the file is named after the service, no leading `_`;
+- [ ] the `id` is unique (does not clash with existing plugins);
+- [ ] the `url_patterns` do not capture other services' links;
+- [ ] the file ends with `PLUGIN = ClassName()`;
+- [ ] the download was tested on at least one real link.

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Обновление MediaGrab: скачивает свежие файлы программы с GitHub
-# и обновляет yt-dlp. Настройки, история и cookies НЕ затрагиваются —
-# они хранятся отдельно, в ~/.mediagrab
+# MediaGrab updater: downloads fresh program files from GitHub and
+# updates yt-dlp. Settings, history and cookies are NOT touched —
+# they are stored separately in ~/.mediagrab
 set -e
 cd "$(dirname "$0")"
 echo "=== Обновление MediaGrab ==="
 echo
 
-# --- 1) обновить файлы программы -------------------------------------
+# --- 1) update the program files --------------------------------------
 if [ -d .git ] && command -v git >/dev/null 2>&1; then
     echo "Обновление через git..."
     git pull --ff-only
@@ -21,7 +21,7 @@ else
     rm -rf "$tmp"
 fi
 
-# --- 2) обновить зависимости (yt-dlp) ---------------------------------
+# --- 2) update dependencies (yt-dlp) -----------------------------------
 if [ -f .venv/bin/activate ]; then
     source .venv/bin/activate
     pip install -U -r requirements.txt

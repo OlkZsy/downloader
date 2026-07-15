@@ -1,12 +1,12 @@
 @echo off
-rem Обновление MediaGrab: скачивает свежие файлы программы с GitHub
-rem и обновляет yt-dlp. Настройки, история и cookies НЕ затрагиваются —
-rem они хранятся отдельно, в %USERPROFILE%\.mediagrab
+rem MediaGrab updater: downloads fresh program files from GitHub and
+rem updates yt-dlp. Settings, history and cookies are NOT touched —
+rem they are stored separately in %USERPROFILE%\.mediagrab
 cd /d "%~dp0"
 echo === Обновление MediaGrab ===
 echo.
 
-rem --- 1) обновить файлы программы -----------------------------------
+rem --- 1) update the program files -------------------------------------
 where git >nul 2>nul
 if %errorlevel%==0 if exist .git (
     echo Обновление через git...
@@ -29,7 +29,7 @@ if errorlevel 1 (
 )
 
 :deps
-rem --- 2) обновить зависимости (yt-dlp) --------------------------------
+rem --- 2) update dependencies (yt-dlp) ----------------------------------
 if exist .venv\Scripts\activate.bat (
     call .venv\Scripts\activate.bat
     pip install -U -r requirements.txt

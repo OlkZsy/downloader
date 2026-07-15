@@ -1,97 +1,103 @@
-# MediaGrab — загрузчик mp3/mp4
+# MediaGrab — mp3/mp4 downloader
 
-Настольное приложение для скачивания музыки (mp3) и видео (mp4) по ссылке
-из популярных сервисов: **YouTube, YouTube Music, Spotify, TikTok,
-X (Twitter), Facebook** — и любых других сайтов, которые поддерживает
-[yt-dlp](https://github.com/yt-dlp/yt-dlp) (их больше тысячи).
+A desktop application for downloading music (mp3) and video (mp4) by
+link from popular services: **YouTube, YouTube Music, Spotify, TikTok,
+X (Twitter), Facebook** — and any other site supported by
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) (over a thousand of them).
 
-Новые сервисы добавляются одним файлом-плагином — см.
+New services are added with a single plugin file — see
 [docs/ADDING_SERVICES.md](docs/ADDING_SERVICES.md).
 
-## Возможности
+The application UI is in Russian.
 
-- Вставили ссылку → нажали «➜» → файл в папке загрузок.
-- Переключатель **mp3 / mp4**, активный формат подсвечен зелёным.
-- Выезжающая панель выбора качества: 128/192/320 кбит/с для mp3,
-  360p–1080p или «Максимум» для mp4.
-- Кнопка **«…»** — выбор папки загрузки; папка, формат и качество
-  **запоминаются** и после закрытия приложения.
-- Панель слева — выбор сервиса вручную или режим «Авто» (сервис
-  определяется по ссылке).
-- История загрузок со статусом: проценты во время скачивания,
-  «✓ загружено» для готовых, «✗ ошибка» для неудачных. Двойной клик по
-  строке истории подставляет ссылку обратно в поле ввода.
-- **Правый клик по строке истории** — меню: «Открыть», «Показать в
-  папке», «Копировать ссылку», «Удалить из истории», а для неудачных
-  загрузок — «Почему не скачалось…» с причиной и отчётом об ошибке.
-- Файлы называются **«Автор - Название»**, когда сервис отдаёт
-  метаданные (Spotify, YouTube Music и др.); иначе имя остаётся как
-  на сервисе.
-- Повторная загрузка того же трека **не перезаписывает файл** — к имени
-  добавляется индекс: «Название (2).mp3», «Название (3).mp3»…
-- Вставка ссылки по **Ctrl+V работает на любой раскладке клавиатуры**
-  (и даже когда фокус не в строке ввода).
-- Кнопка **👤 — профиль и настройки**: имя, папка загрузки, статистика,
-  очистка истории, папки данных и cookies, версия приложения.
-- **Вход в аккаунты через cookies браузера** (X, Facebook, YouTube…) —
-  один текстовый файл в папке cookies: [docs/COOKIES.md](docs/COOKIES.md).
-- **Автопроверка обновлений**: при запуске приложение сверяет свою
-  версию с GitHub и подсказывает в строке статуса, когда пора запускать
-  `update.bat` / `./update.sh`.
-- Все данные пользователя (настройки, история, cookies) хранятся в
-  `~/.mediagrab` — **отдельно от программы**, поэтому обновление их
-  не перезаписывает.
-- Несколько загрузок одновременно (очередь на 2 параллельных потока).
+## Features
 
-## Как это работает со Spotify
+- Paste a link → press "➜" → the file lands in your download folder.
+- **mp3 / mp4** switch with the active format highlighted in green.
+- Slide-out quality panel: 128/192/320 kbps for mp3,
+  360p–1080p or "Maximum" for mp4.
+- The **"…"** button picks the download folder; the folder, format and
+  quality are **remembered** after the application is closed.
+- The left panel selects a service manually, or the "Auto" mode
+  detects the service from the link.
+- Download history with status: percentage while downloading,
+  a check mark for finished items, a red cross for failed ones.
+  Double-clicking a history row puts the link back into the input.
+- **Right-click on a history row** — a menu with "Open",
+  "Show in folder", "Copy link", "Remove from history", and for failed
+  downloads — "Why it did not download…" with the reason and an error
+  report.
+- Files are named **"Artist - Title"** whenever the service provides
+  metadata (Spotify, YouTube Music etc.); otherwise the original name
+  is kept.
+- Downloading the same track again **does not overwrite the file** —
+  an index is appended: "Title (2).mp3", "Title (3).mp3"…
+- Pasting a link with **Ctrl+V works on any keyboard layout**
+  (even when the input is not focused).
+- The **👤 button — profile and settings**: name, download folder,
+  statistics, history cleanup, data and cookies folders, app version.
+- **Signing in to accounts via browser cookies** (X, Facebook,
+  YouTube…) — one text file in the cookies folder:
+  [docs/COOKIES.md](docs/COOKIES.md).
+- **Automatic update checks**: on startup the application compares its
+  version with GitHub and suggests running `update.bat` / `./update.sh`
+  in the status bar when a new one is out.
+- All user data (settings, history, cookies) lives in `~/.mediagrab` —
+  **separate from the program**, so updates never overwrite it.
+- Several downloads at once (a queue with 2 parallel workers).
 
-Треки Spotify защищены DRM, и скачать их напрямую невозможно (и это было
-бы нарушением условий сервиса). Плагин Spotify получает **название
-трека** через открытый API Spotify и скачивает **эту же песню с
-YouTube**. Поэтому для Spotify доступен только формат mp3, а результат —
-лучшая найденная версия трека на YouTube.
+## How Spotify support works
+
+Spotify tracks are DRM-protected and cannot be downloaded directly
+(doing so would also violate the service's terms). The Spotify plugin
+fetches the **track title** through Spotify's public API and downloads
+**the same song from YouTube**. That is why only mp3 is available for
+Spotify, and the result is the best matching version of the track found
+on YouTube.
 
 ---
 
-# Установка
+# Installation
 
-Нужны две вещи: **Python 3.10+** и **ffmpeg** (для конвертации в mp3 и
-склейки видео).
+Two things are required: **Python 3.10+** and **ffmpeg** (for mp3
+conversion and video merging).
 
 ## Windows
 
-1. **Установите Python**: скачайте с [python.org/downloads](https://www.python.org/downloads/)
-   и запустите установщик. **Обязательно отметьте галочку
-   «Add Python to PATH»** внизу первого экрана.
-2. **Установите ffmpeg** (любой способ):
-   - откройте «Терминал» (PowerShell) и выполните:
+1. **Install Python**: download it from
+   [python.org/downloads](https://www.python.org/downloads/) and run
+   the installer. **Make sure to tick the "Add Python to PATH"
+   checkbox** at the bottom of the first screen.
+2. **Install ffmpeg** (either way works):
+   - open Terminal (PowerShell) and run:
      ```
      winget install ffmpeg
      ```
-   - либо скачайте архив с [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/)
-     (файл `ffmpeg-release-essentials.zip`), распакуйте, например, в
-     `C:\ffmpeg` и добавьте `C:\ffmpeg\bin` в переменную среды `PATH`
-     (Параметры → Система → Дополнительные параметры системы →
-     Переменные среды).
-3. **Скачайте это приложение**: зелёная кнопка **Code → Download ZIP**
-   на странице репозитория, распакуйте архив. (Или `git clone`, если
-   пользуетесь git.)
-4. **Запустите `install.bat`** двойным кликом — он создаст виртуальное
-   окружение и установит зависимости.
-5. **Запускайте приложение через `start.bat`**.
+   - or download the archive from
+     [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/)
+     (the `ffmpeg-release-essentials.zip` file), unpack it to e.g.
+     `C:\ffmpeg` and add `C:\ffmpeg\bin` to the `PATH` environment
+     variable (Settings → System → Advanced system settings →
+     Environment Variables).
+3. **Download this application**: the green **Code → Download ZIP**
+   button on the repository page, then unpack the archive. (Or
+   `git clone` if you use git.)
+4. **Run `install.bat`** by double-clicking — it creates a virtual
+   environment and installs the dependencies.
+5. **Launch the application with `start.bat`**.
 
 ## macOS
 
 ```bash
-# 1. Homebrew (если ещё нет): https://brew.sh
+# 1. Homebrew (if you don't have it yet): https://brew.sh
 brew install python ffmpeg
 
-# 2. Скачайте и распакуйте репозиторий (Code → Download ZIP), затем:
-cd путь/к/папке/downloader
-chmod +x install.sh start.sh
+# 2. Download and unpack the repository (Code → Download ZIP), then:
+cd path/to/downloader
+chmod +x install.sh start.sh update.sh
 ./install.sh
 
-# 3. Запуск:
+# 3. Launch:
 ./start.sh
 ```
 
@@ -101,131 +107,134 @@ chmod +x install.sh start.sh
 sudo apt update
 sudo apt install -y python3 python3-venv python3-tk ffmpeg
 
-cd путь/к/папке/downloader
-chmod +x install.sh start.sh
-./install.sh   # однократно
-./start.sh     # запуск
+cd path/to/downloader
+chmod +x install.sh start.sh update.sh
+./install.sh   # once
+./start.sh     # launch
 ```
 
-## Проверка, что всё установлено
+## Checking the installation
 
 ```bash
-python3 --version   # должно быть 3.10 или новее (в Windows: python --version)
-ffmpeg -version     # должна напечататься версия ffmpeg
+python3 --version   # must be 3.10 or newer (on Windows: python --version)
+ffmpeg -version     # must print the ffmpeg version
 ```
 
-Если ffmpeg не найден, приложение всё равно запустится, но покажет
-предупреждение в строке статуса внизу: без ffmpeg не работает mp3 и
-высокое качество mp4.
+If ffmpeg is missing, the application still starts but shows a warning
+in the status bar at the bottom: without ffmpeg neither mp3 nor
+high-quality mp4 works.
 
-## Обновление приложения
+## Updating the application
 
-Запустите **`update.bat`** (Windows) или **`./update.sh`**
-(macOS/Linux) — скрипт скачает свежие файлы программы с GitHub и
-обновит yt-dlp. Настройки, история и cookies при этом не затрагиваются
-(они хранятся в `~/.mediagrab`, вне папки программы).
+Run **`update.bat`** (Windows) or **`./update.sh`** (macOS/Linux) —
+the script downloads fresh program files from GitHub and updates
+yt-dlp. Settings, history and cookies are not touched (they live in
+`~/.mediagrab`, outside the program folder).
 
-Проверять вручную не обязательно: при каждом запуске приложение само
-сверяет версию с GitHub и, если вышла новая, пишет об этом в строке
-статуса внизу окна и в окне профиля (кнопка 👤).
+No need to check manually: on every start the application compares its
+version with GitHub and, when a new one is out, says so in the status
+bar at the bottom of the window and in the profile window (the 👤
+button).
 
-Если загрузки перестали работать, а новой версии нет — тоже запустите
-`update.bat`/`update.sh`: он обновит yt-dlp, который чинит поломки
-после изменений на сайтах сервисов.
-
----
-
-# Использование
-
-1. Скопируйте ссылку на видео/трек в браузере.
-2. Вставьте её в строку сверху (Ctrl+V) и нажмите **➜** или Enter.
-3. Формат выбирается кнопками **mp3 / mp4** справа под строкой; повторный
-   клик по активному формату открывает панель качества.
-4. Кнопка **«…»** справа — куда сохранять файлы (запоминается).
-5. Ход загрузки виден в списке ниже; готовые строки помечаются **✓**.
-
-Слева можно выбрать сервис вручную, но обычно достаточно режима
-**«Авто»** — сервис определяется по ссылке.
-
-## Скачивание из-под своего аккаунта (cookies)
-
-Посты 18+ в X, видео из групп Facebook и другой контент «только для
-вошедших» скачивается, если подключить cookies вашего браузера — один
-текстовый файл, который кладётся в папку cookies (кнопка **👤 →
-«Папка cookies»**). Логин и пароль нигде не сохраняются. Пошаговая
-инструкция: [docs/COOKIES.md](docs/COOKIES.md).
+If downloads stopped working and there is no new version — run
+`update.bat`/`update.sh` anyway: it updates yt-dlp, which fixes
+breakage after services change their sites.
 
 ---
 
-# Если загрузка не работает (ошибки)
+# Usage
 
-Когда загрузка завершается ошибкой, нажмите на строку **правой кнопкой
-мыши → «Почему не скачалось…»**. Откроется окно, где написано:
+1. Copy a video/track link in your browser.
+2. Paste it into the top input (Ctrl+V) and press **➜** or Enter.
+3. Pick the format with the **mp3 / mp4** buttons under the input;
+   clicking the active format again opens the quality panel.
+4. The **"…"** button on the right selects where files are saved
+   (remembered between runs).
+5. Download progress is shown in the list below; finished rows are
+   marked with **✓**.
 
-- **что можно сделать** — человеческое объяснение причины и шаги
-  решения (например: «контент приватный, нужен вход», «обновите
-  yt-dlp», «проблема с сетью»);
-- **текст ошибки** — техническое сообщение;
-- кнопка **«Скопировать отчёт»** — копирует полный отчёт (ссылка,
-  сервис, версии программ, полный текст ошибки), который можно
-  отправить разработчику;
-- полные отчёты также сохраняются в файлы: папка `logs` рядом с
-  настройками (`~/.mediagrab/logs`, в Windows —
-  `C:\Users\ИМЯ\.mediagrab\logs`).
+The left panel selects a service manually, but the **"Auto"** mode is
+usually enough — the service is detected from the link.
 
-Типовые причины ошибок:
+## Downloading with your account (cookies)
 
-| Симптом | Причина и решение |
+18+ posts on X, videos from Facebook groups and other "signed-in only"
+content downloads fine once you connect your browser's cookies — a
+single text file placed into the cookies folder (the **👤 →
+"Папка cookies"** button). Your login and password are never stored.
+Step-by-step guide: [docs/COOKIES.md](docs/COOKIES.md).
+
+---
+
+# When a download fails (errors)
+
+When a download ends with an error, **right-click the row → «Почему не
+скачалось…»**. A window opens with:
+
+- **what you can do** — a human explanation of the cause and the steps
+  to fix it (e.g. "the content is private, sign-in required", "update
+  yt-dlp", "network problem");
+- **the error text** — the technical message;
+- the **«Скопировать отчёт»** button — copies the full report (link,
+  service, program versions, full error text) that you can send to the
+  developer;
+- full reports are also saved as files: the `logs` folder next to the
+  settings (`~/.mediagrab/logs`, on Windows —
+  `C:\Users\NAME\.mediagrab\logs`).
+
+Typical causes:
+
+| Symptom | Cause and fix |
 | --- | --- |
-| Ошибка почти на всех сервисах | Устарел yt-dlp — запустите `update.bat` / `./update.sh` |
-| «ffmpeg» в тексте ошибки | Не установлен ffmpeg — раздел установки для вашей ОС выше |
-| X (Twitter) не качает | Без входа доступны только публичные посты. Для 18+ и закрытых аккаунтов подключите cookies: [docs/COOKIES.md](docs/COOKIES.md) |
-| Facebook не качает | Публичные видео качаются сразу; для видео из групп подключите cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
-| «Unsupported URL» | Ссылка ведёт не на видео/трек, а на профиль/поиск/главную |
-| «429 / Too Many Requests» | Сервис ограничил запросы — подождите несколько минут |
+| Errors on almost every service | yt-dlp is outdated — run `update.bat` / `./update.sh` |
+| "ffmpeg" in the error text | ffmpeg is not installed — see the install section for your OS above |
+| X (Twitter) won't download | Only public posts are available without signing in. For 18+ and private accounts connect cookies: [docs/COOKIES.md](docs/COOKIES.md) |
+| Facebook won't download | Public videos work right away; for group videos connect cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
+| "Unsupported URL" | The link points to a profile/search/home page instead of a video/track |
+| "429 / Too Many Requests" | The service rate-limited you — wait a few minutes |
 
 ---
 
-# Как добавить новый сервис
+# Adding a new service
 
-Каждый сервис — один небольшой файл в `mediagrab/services/`. Там же лежит
-готовый шаблон `_template.py`. Подробная инструкция с примерами:
-[docs/ADDING_SERVICES.md](docs/ADDING_SERVICES.md).
+Every service is one small file in `mediagrab/services/`, and a ready
+template `_template.py` lives right there. The detailed guide with
+examples: [docs/ADDING_SERVICES.md](docs/ADDING_SERVICES.md).
 
-# Как подключить к проекту другого человека
+# Inviting another person to the project
 
-Пошаговая инструкция (добавление соавтора в репозиторий GitHub и
-работа через fork + pull request):
+Step-by-step guide (adding a collaborator to the GitHub repository and
+working via fork + pull request):
 [docs/COLLABORATORS.md](docs/COLLABORATORS.md).
 
-# Структура проекта
+# Project structure
 
 ```
 downloader/
-├── run.py                  # запуск приложения
-├── VERSION                 # номер версии (для автопроверки обновлений)
-├── install.bat / start.bat / update.bat # установка, запуск, обновление (Windows)
-├── install.sh  / start.sh  / update.sh  # то же для macOS/Linux
-├── requirements.txt        # зависимости Python (yt-dlp)
+├── run.py                  # application entry point
+├── VERSION                 # version number (for the update check)
+├── install.bat / start.bat / update.bat # install, launch, update (Windows)
+├── install.sh  / start.sh  / update.sh  # same for macOS/Linux
+├── requirements.txt        # Python dependencies (yt-dlp)
 ├── mediagrab/
-│   ├── app.py              # окно приложения (Tkinter)
-│   ├── engine.py           # движок загрузки (yt-dlp, фоновые потоки)
-│   ├── config.py           # настройки и история (~/.mediagrab/config.json)
-│   ├── version.py          # проверка новой версии на GitHub
-│   └── services/           # плагины сервисов
-│       ├── base.py         # базовый класс плагина («blueprint»)
-│       ├── _template.py    # шаблон для нового сервиса
+│   ├── app.py              # application window (Tkinter)
+│   ├── engine.py           # download engine (yt-dlp, background threads)
+│   ├── config.py           # settings and history (~/.mediagrab/config.json)
+│   ├── version.py          # new-version check against GitHub
+│   └── services/           # service plugins
+│       ├── base.py         # plugin base class (the "blueprint")
+│       ├── _template.py    # template for a new service
 │       ├── youtube.py, youtube_music.py, spotify.py,
 │       ├── tiktok.py, x_twitter.py, facebook.py
 └── docs/
-    ├── ADDING_SERVICES.md  # как добавить сервис
-    ├── COOKIES.md          # вход в аккаунты через cookies
-    └── COLLABORATORS.md    # как подключить соавтора
+    ├── ADDING_SERVICES.md  # how to add a service
+    ├── COOKIES.md          # signing in to accounts via cookies
+    └── COLLABORATORS.md    # how to invite a collaborator
 ```
 
-# Важно
+# Important
 
-Скачивайте только контент, на который у вас есть права (собственные
-материалы, свободные лицензии и т. п.). Ответственность за использование
-приложения лежит на пользователе — соблюдайте условия сервисов и законы
-об авторском праве вашей страны.
+Only download content you have the rights to (your own material,
+freely licensed works and so on). Responsibility for how the
+application is used lies with the user — respect the services' terms
+and the copyright laws of your country.

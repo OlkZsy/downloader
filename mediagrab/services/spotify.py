@@ -1,9 +1,10 @@
-"""Плагин Spotify.
+"""Spotify plugin.
 
-Контент Spotify защищён DRM, и скачать его напрямую невозможно.
-Плагин работает иначе: через открытый oEmbed-API Spotify получает
-название трека, а затем ищет и скачивает этот трек на YouTube
-(поисковый запрос yt-dlp "ytsearch1:..."). Поэтому доступен только mp3.
+Spotify content is DRM-protected and cannot be downloaded directly.
+This plugin works differently: it fetches the track title via Spotify's
+public oEmbed API and then finds and downloads that track on YouTube
+(the yt-dlp search query "ytsearch1:..."). That is why only mp3 is
+available.
 """
 
 import json

@@ -1,6 +1,6 @@
 @echo off
-rem Установка MediaGrab для Windows: создаёт виртуальное окружение
-rem и ставит зависимости. Запускать двойным кликом.
+rem MediaGrab installer for Windows: creates a virtual environment
+rem and installs dependencies. Run by double-clicking.
 cd /d "%~dp0"
 
 where py >nul 2>nul

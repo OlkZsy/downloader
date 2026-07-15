@@ -1,28 +1,28 @@
-"""Базовый класс («blueprint») плагина сервиса."""
+"""Base class ("blueprint") for a service plugin."""
 
 import re
 
 
 class ServicePlugin:
-    """Наследуйте этот класс, чтобы добавить поддержку нового сервиса.
+    """Subclass this to add support for a new service.
 
-    Минимальный плагин задаёт только id, name и url_patterns — загрузку
-    выполняет yt-dlp, который сам умеет сотни сайтов. Методы prepare()
-    и tweak_options() переопределяются, когда сервису нужна особая
-    обработка (пример — spotify.py).
+    A minimal plugin only sets id, name and url_patterns — the actual
+    downloading is done by yt-dlp, which supports hundreds of sites on
+    its own. Override prepare() and tweak_options() when a service
+    needs special handling (see spotify.py for an example).
     """
 
-    #: короткий идентификатор (латиницей, без пробелов)
+    #: short identifier (latin letters, no spaces)
     id = "base"
-    #: имя, отображаемое в боковой панели приложения
+    #: name shown in the application sidebar
     name = "Base"
-    #: регулярные выражения, по которым ссылка относится к сервису
+    #: regular expressions that match this service's links
     url_patterns: list = []
-    #: какие форматы сервис поддерживает
+    #: formats the service supports
     supported_formats = ("mp3", "mp4")
-    #: порядок в списке и при автоопределении (меньше — раньше)
+    #: position in the list and in auto-detection (lower — earlier)
     order = 100
-    #: подсказка, добавляемая к сообщению об ошибке загрузки
+    #: hint appended to download error messages
     error_hint = ""
 
     def matches(self, url: str) -> bool:
@@ -30,15 +30,14 @@ class ServicePlugin:
                    for p in self.url_patterns)
 
     def prepare(self, url: str) -> str:
-        """Вернуть то, что реально скачивать.
+        """Return what should actually be downloaded.
 
-        Обычно это тот же URL. Может вернуть и поисковый запрос yt-dlp
-        вида "ytsearch1:название" — так работает плагин Spotify.
-        Вызывается в фоновом потоке, поэтому здесь можно делать
-        сетевые запросы.
+        Usually the same URL. May also return a yt-dlp search query
+        like "ytsearch1:title" — that is how the Spotify plugin works.
+        Runs in a background thread, so network requests are fine here.
         """
         return url
 
     def tweak_options(self, options: dict, fmt: str) -> dict:
-        """Подправить опции yt-dlp под особенности сервиса."""
+        """Adjust yt-dlp options for this service's quirks."""
         return options

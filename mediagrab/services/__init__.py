@@ -1,22 +1,22 @@
-"""Реестр плагинов сервисов.
+"""Service plugin registry.
 
-Каждый файл в этой папке (кроме начинающихся с "_" и base.py) — плагин
-одного сервиса. Файл должен определять переменную PLUGIN — экземпляр
-подкласса ServicePlugin. Плагины подхватываются автоматически: чтобы
-добавить новый сервис, достаточно положить сюда новый файл
-(см. _template.py и docs/ADDING_SERVICES.md).
+Every file in this package (except those starting with "_" and base.py)
+is a plugin for one service. A plugin file must define a PLUGIN
+variable — an instance of a ServicePlugin subclass. Plugins are picked
+up automatically: to add a new service, just drop a new file in here
+(see _template.py and docs/ADDING_SERVICES.md).
 """
 
 import importlib
 import pkgutil
 
-from .base import ServicePlugin  # noqa: F401 — реэкспорт для плагинов
+from .base import ServicePlugin  # noqa: F401 — re-exported for plugins
 
 _plugins: list | None = None
 
 
 def all_plugins() -> list:
-    """Список всех обнаруженных плагинов, отсортированный по приоритету."""
+    """All discovered plugins, sorted by priority."""
     global _plugins
     if _plugins is None:
         found = []
@@ -34,7 +34,7 @@ def all_plugins() -> list:
 
 
 def detect(url: str):
-    """Найти плагин, которому принадлежит ссылка (или None)."""
+    """Find the plugin a link belongs to (or None)."""
     for plugin in all_plugins():
         if plugin.matches(url):
             return plugin

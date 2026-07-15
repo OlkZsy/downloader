@@ -1,34 +1,34 @@
-"""ШАБЛОН нового плагина сервиса (файл с "_" в начале не загружается).
+"""TEMPLATE for a new service plugin (files starting with "_" are not loaded).
 
-Как добавить новый сервис:
+How to add a new service:
 
-1. Скопируйте этот файл под новым именем, например soundcloud.py
-   (без "_" в начале!).
-2. Заполните id, name и url_patterns.
-3. Если сервису нужна особая логика — переопределите prepare()
-   или tweak_options() (см. base.py и spotify.py).
-4. Перезапустите приложение — сервис появится в боковой панели
-   автоматически, регистрировать его нигде не нужно.
+1. Copy this file under a new name, e.g. soundcloud.py
+   (no leading "_"!).
+2. Fill in id, name and url_patterns.
+3. If the service needs special logic — override prepare()
+   or tweak_options() (see base.py and spotify.py).
+4. Restart the application — the service shows up in the sidebar
+   automatically, no registration needed anywhere.
 
-Подробности: docs/ADDING_SERVICES.md
+Details: docs/ADDING_SERVICES.md
 """
 
 from .base import ServicePlugin
 
 
 class MyService(ServicePlugin):
-    id = "myservice"                      # латиницей, без пробелов
-    name = "Мой сервис"                   # имя в боковой панели
-    url_patterns = [r"myservice\.com/"]   # регулярки для ссылок сервиса
-    supported_formats = ("mp3", "mp4")    # что умеет сервис
-    order = 50                            # позиция в списке
+    id = "myservice"                      # latin letters, no spaces
+    name = "Мой сервис"                   # name shown in the sidebar
+    url_patterns = [r"myservice\.com/"]   # regexes for the service's links
+    supported_formats = ("mp3", "mp4")    # what the service supports
+    order = 50                            # position in the list
 
     # def prepare(self, url: str) -> str:
-    #     """Например, превратить короткую ссылку в полную."""
+    #     """E.g. turn a short link into a full one."""
     #     return url
 
     # def tweak_options(self, options: dict, fmt: str) -> dict:
-    #     """Например, передать особые заголовки:
+    #     """E.g. pass special headers:
     #     options["http_headers"] = {"Referer": "https://myservice.com"}
     #     """
     #     return options

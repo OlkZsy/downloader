@@ -1,19 +1,19 @@
-"""Движок загрузки: обёртка над yt-dlp, работающая в фоновых потоках.
+"""Download engine: a wrapper around yt-dlp running in background threads.
 
-GUI кладёт задачи через DownloadManager.submit() и забирает события
-прогресса из очереди DownloadManager.events (кортежи
+The GUI submits jobs via DownloadManager.submit() and consumes progress
+events from the DownloadManager.events queue (tuples of
 (task_id, event, payload)):
 
-    ("queued", None)       — задача поставлена в очередь
-    ("start", None)        — загрузка началась
-    ("progress", 42.5)     — процент загрузки
-    ("processing", None)   — конвертация (ffmpeg)
-    ("done", "/полный/путь/к/файлу.mp3") — готово
-    ("error", {"message", "hint", "report", "report_path"}) — ошибка
+    ("queued", None)       — job added to the queue
+    ("start", None)        — download started
+    ("progress", 42.5)     — download percentage
+    ("processing", None)   — conversion (ffmpeg)
+    ("done", "/full/path/to/file.mp3") — finished
+    ("error", {"message", "hint", "report", "report_path"}) — failed
 
-Перед загрузкой запрашиваются метаданные, из них строится имя файла
-«Автор - Название» (когда метаданные это позволяют), а при совпадении
-имён добавляется индекс: «Название (2)».
+Metadata is fetched before downloading; it is used to build an
+"Artist - Title" file name (when the metadata allows it), and name
+clashes get an index appended: "Title (2)".
 """
 
 import itertools
@@ -31,7 +31,7 @@ LOGS_DIR = CONFIG_DIR / "logs"
 
 
 def find_cookie_file(plugin):
-    """Файл cookies для сервиса: <id>.txt, иначе общий all.txt."""
+    """Cookie file for a service: <id>.txt, with all.txt as fallback."""
     candidates = []
     if plugin is not None:
         candidates.append(COOKIES_DIR / f"{plugin.id}.txt")
@@ -47,9 +47,9 @@ MP4_QUALITIES = ("360p", "480p", "720p", "1080p", "Максимум")
 
 
 def build_options(fmt: str, quality: str, outdir: str) -> dict:
-    """Собрать словарь опций yt-dlp для формата и качества."""
+    """Build the yt-dlp options dict for a format and quality."""
     opts = {
-        # заменяется на точное имя файла в _worker после чтения метаданных
+        # replaced with the exact file name in _worker after metadata probe
         "outtmpl": os.path.join(outdir, "%(title)s.%(ext)s"),
         "noplaylist": True,
         "quiet": True,
@@ -65,10 +65,10 @@ def build_options(fmt: str, quality: str, outdir: str) -> dict:
     else:
         height = MP4_HEIGHTS.get(quality)
         h = f"[height<={height}]" if height else ""
-        # Сначала пытаемся взять видео mp4 + звук m4a (AAC): такой файл
-        # играет со звуком в любом плеере. Прочие комбинации (например,
-        # звук Opus) дают «немой» mp4 в стандартных плеерах Windows —
-        # для них в _worker включается перекодировка звука в AAC.
+        # Prefer mp4 video + m4a (AAC) audio: such a file plays with
+        # sound in any player. Other combinations (e.g. Opus audio)
+        # produce a "silent" mp4 in stock Windows players — for those
+        # _worker enables audio transcoding to AAC.
         opts["format"] = (
             f"bestvideo{h}[ext=mp4]+bestaudio[ext=m4a]/"
             f"bestvideo{h}+bestaudio/best{h}/best"
@@ -78,7 +78,7 @@ def build_options(fmt: str, quality: str, outdir: str) -> dict:
 
 
 def display_title(info: dict, fmt: str) -> str:
-    """Имя файла «Автор - Название», когда метаданные это позволяют."""
+    """File name as "Artist - Title" when the metadata allows it."""
     artist = (info.get("artist") or info.get("creator") or "").strip()
     track = (info.get("track") or "").strip()
     if artist and track:
@@ -95,7 +95,7 @@ def display_title(info: dict, fmt: str) -> str:
 
 
 def unique_path(outdir: str, base: str, ext: str) -> str:
-    """Свободное имя файла: «Название.mp3», «Название (2).mp3», …"""
+    """A free file name: "Title.mp3", "Title (2).mp3", …"""
     candidate = os.path.join(outdir, f"{base}.{ext}")
     counter = 2
     while os.path.exists(candidate):
@@ -111,7 +111,7 @@ def short_error(exc: Exception) -> str:
     return text.splitlines()[0][:300] if text else exc.__class__.__name__
 
 
-# --- подсказки по типовым ошибкам ---------------------------------------
+# --- hints for typical errors (shown to the user, kept in Russian) ------
 _HINTS = (
     (("ffmpeg",),
      "Не найден ffmpeg — без него не работают mp3 и склейка видео. "
@@ -258,7 +258,7 @@ class DownloadManager:
                 if cookie_file:
                     opts["cookiefile"] = str(cookie_file)
 
-                # 1) метаданные — из них имя файла и выбранные форматы
+                # 1) metadata — used for the file name and format choice
                 probe = {k: v for k, v in opts.items()
                          if k not in ("postprocessors",
                                       "merge_output_format",
@@ -275,17 +275,17 @@ class DownloadManager:
                 if not info:
                     raise RuntimeError("не удалось получить данные по ссылке")
 
-                # 2) имя файла: «Автор - Название», дубликаты — с « (2)»
+                # 2) file name: "Artist - Title", duplicates get " (2)"
                 ext = "mp3" if fmt == "mp3" else "mp4"
                 base = sanitize_filename(display_title(info, fmt))
                 final_path = unique_path(outdir, base, ext)
                 stem = os.path.splitext(final_path)[0]
-                # % — служебный символ шаблона outtmpl, экранируем
+                # % is special in the outtmpl template — escape it
                 opts["outtmpl"] = stem.replace("%", "%%") + ".%(ext)s"
 
-                # 3) если в mp4 склеивается звук не-AAC (например Opus),
-                # перекодируем его: иначе стандартные плееры Windows
-                # играют такой файл без звука
+                # 3) if a non-AAC audio codec (e.g. Opus) is being merged
+                # into mp4, transcode it: stock Windows players would
+                # otherwise play the file without sound
                 if fmt == "mp4":
                     requested = info.get("requested_formats") or [info]
                     acodecs = {f.get("acodec") for f in requested
@@ -303,13 +303,13 @@ class DownloadManager:
                     ydl.download([target])
 
                 if not os.path.exists(final_path):
-                    # подстраховка: ищем файл по основе имени
+                    # safety net: look the file up by its name stem
                     import glob
                     matches = glob.glob(glob.escape(stem) + ".*")
                     if matches:
                         final_path = matches[0]
                 self.events.put((task_id, "done", final_path))
-            except Exception as exc:  # noqa: BLE001 — любой сбой показываем в UI
+            except Exception as exc:  # noqa: BLE001 — surface any failure in the UI
                 self.events.put((task_id, "error", make_error_report(
                     exc, task_id=task_id, url=url, plugin=plugin,
                     fmt=fmt, quality=quality)))

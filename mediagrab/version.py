@@ -1,8 +1,9 @@
-"""Версия приложения и проверка обновлений на GitHub.
+"""Application version and update checks against GitHub.
 
-Номер версии хранится в файле VERSION в корне проекта. При запуске
-приложение в фоне сравнивает его с VERSION в ветке main на GitHub и,
-если там новее, показывает подсказку обновиться (update.bat/update.sh).
+The version number is stored in the VERSION file at the project root.
+On startup the app compares it in the background with VERSION on the
+main branch on GitHub and, when a newer one exists, suggests running
+update.bat/update.sh.
 """
 
 import re
@@ -29,10 +30,10 @@ def _parse(value: str) -> tuple:
 
 
 def check_remote(timeout: int = 6):
-    """Вернуть номер новой версии с GitHub или None, если обновлений нет.
+    """Return the newer version number from GitHub, or None.
 
-    Сетевые ошибки пробрасываются — вызывающий код глушит их сам,
-    чтобы отсутствие интернета не мешало работе приложения.
+    Network errors propagate — the caller silences them so that having
+    no internet connection never disturbs the app.
     """
     request = urllib.request.Request(
         VERSION_URL, headers={"User-Agent": "MediaGrab"})

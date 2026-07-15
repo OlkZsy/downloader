@@ -1,62 +1,64 @@
-# Вход в аккаунт через cookies (X, Facebook и другие)
+# Signing in to accounts via cookies (X, Facebook and others)
 
-Некоторые сервисы отдают часть контента только вошедшим пользователям:
-в X (Twitter) это посты 18+ и закрытые аккаунты, в Facebook — видео из
-групп, на YouTube — ролики с возрастным ограничением.
+Some services only serve part of their content to signed-in users:
+on X (Twitter) that is 18+ posts and private accounts, on Facebook —
+group videos, on YouTube — age-restricted videos.
 
-## Почему не логин и пароль?
+## Why not a login and password?
 
-Вставить логин и пароль в текстовый файл не получится по двум причинам:
+Putting a login and password into a text file would not work, for two
+reasons:
 
-1. Сервисы (особенно X) блокируют вход из программ: требуют капчу,
-   код из почты или двухфакторную аутентификацию. Программа этот вход
-   просто не пройдёт.
-2. Хранить пароль открытым текстом небезопасно.
+1. Services (X especially) block sign-ins from programs: they demand a
+   captcha, an e-mail code or two-factor authentication. The program
+   simply cannot pass that.
+2. Storing a password in plain text is unsafe.
 
-Стандартное решение — **файл cookies**: это тоже обычный текстовый
-файл, но вместо пароля в нём «пропуск», который браузер получил после
-вашего входа. Программа прикладывает его к запросам, и сервис считает
-их вашими. Пароль при этом нигде не хранится.
+The standard solution is a **cookies file**: also a plain text file,
+but instead of your password it holds the "pass" your browser received
+after you signed in. The program attaches it to its requests and the
+service treats them as yours. Your password is never stored anywhere.
 
-## Пошагово: подключаем аккаунт X
+## Step by step: connecting an X account
 
-1. **Установите расширение для экспорта cookies** в браузер:
+1. **Install a cookies-export extension** in your browser:
    - Chrome / Edge / Opera: [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
-   - Firefox: [cookies.txt](https://addons.mozilla.org/ru/firefox/addon/cookies-txt/)
-2. **Войдите в аккаунт** на [x.com](https://x.com) в этом браузере.
-3. Оставаясь на странице x.com, **нажмите значок расширения** на панели
-   браузера и нажмите **Export** (в «Get cookies.txt LOCALLY» —
-   «Export As ⇩»). Скачается файл вида `x.com_cookies.txt`.
-4. **Переименуйте файл в `x.txt`** и положите его в папку cookies
-   приложения:
-   - в MediaGrab нажмите кнопку **👤** (справа от «…») →
-     **«Папка cookies»** — папка откроется сама
-     (это `C:\Users\ВАШЕ_ИМЯ\.mediagrab\cookies`, на macOS/Linux —
+   - Firefox: [cookies.txt](https://addons.mozilla.org/firefox/addon/cookies-txt/)
+2. **Sign in to your account** at [x.com](https://x.com) in that
+   browser.
+3. While on the x.com page, **click the extension icon** in the browser
+   toolbar and press **Export** (in "Get cookies.txt LOCALLY" —
+   "Export As ⇩"). A file like `x.com_cookies.txt` is downloaded.
+4. **Rename the file to `x.txt`** and put it into the application's
+   cookies folder:
+   - in MediaGrab press the **👤** button (to the right of "…") →
+     **«Папка cookies»** — the folder opens by itself
+     (it is `C:\Users\YOUR_NAME\.mediagrab\cookies`, on macOS/Linux —
      `~/.mediagrab/cookies`);
-   - перетащите туда `x.txt`.
-5. **Повторите загрузку** в MediaGrab — файл подхватится автоматически,
-   перезапуск не нужен.
+   - drop `x.txt` in there.
+5. **Retry the download** in MediaGrab — the file is picked up
+   automatically, no restart needed.
 
-## Имена файлов для других сервисов
+## File names for other services
 
-Файл называется по id сервиса:
+The file is named after the service id:
 
-| Сервис | Имя файла |
+| Service | File name |
 | --- | --- |
 | X (Twitter) | `x.txt` |
 | Facebook | `facebook.txt` |
 | YouTube | `youtube.txt` |
 | YouTube Music | `youtube_music.txt` |
 | TikTok | `tiktok.txt` |
-| все сервисы сразу | `all.txt` |
+| all services at once | `all.txt` |
 
-Если есть и `x.txt`, и `all.txt`, для X будет использован `x.txt`.
+If both `x.txt` and `all.txt` exist, `x.txt` wins for X.
 
-## Важно про безопасность
+## Security notes
 
-- **Файл cookies даёт полный доступ к вашему аккаунту.** Никому его не
-  отправляйте, не выкладывайте и не коммитьте в git.
-- Cookies со временем устаревают (или сбрасываются, когда вы выходите
-  из аккаунта в браузере). Если загрузки с аккаунтом перестали
-  работать — просто экспортируйте файл заново (шаги 2–4).
-- Чтобы отключить аккаунт, удалите файл из папки cookies.
+- **A cookies file grants full access to your account.** Never send it
+  to anyone, never publish it and never commit it to git.
+- Cookies expire over time (or reset when you sign out in the
+  browser). If account downloads stop working — just export the file
+  again (steps 2–4).
+- To disconnect the account, delete the file from the cookies folder.
