@@ -43,7 +43,7 @@ def find_cookie_file(plugin):
 
 MP4_HEIGHTS = {"360p": 360, "480p": 480, "720p": 720, "1080p": 1080}
 MP3_BITRATES = ("128", "192", "320")
-MP4_QUALITIES = ("360p", "480p", "720p", "1080p", "Максимум")
+MP4_QUALITIES = ("360p", "480p", "720p", "1080p", "Max")
 
 
 def build_options(fmt: str, quality: str, outdir: str) -> dict:
@@ -111,41 +111,42 @@ def short_error(exc: Exception) -> str:
     return text.splitlines()[0][:300] if text else exc.__class__.__name__
 
 
-# --- hints for typical errors (shown to the user, kept in Russian) ------
+# --- hints for typical errors (shown to the user) -----------------------
 _HINTS = (
     (("ffmpeg",),
-     "Не найден ffmpeg — без него не работают mp3 и склейка видео. "
-     "Установите его по инструкции из README.md (раздел вашей ОС) "
-     "и повторите загрузку."),
+     "ffmpeg was not found — without it neither mp3 nor video merging "
+     "works. Install it following README.md (the section for your OS) "
+     "and retry the download."),
     (("unsupported url",),
-     "Эта ссылка не поддерживается. Проверьте, что она ведёт на "
-     "конкретное видео или трек, а не на профиль, поиск или главную "
-     "страницу сервиса."),
+     "This link is not supported. Check that it points to a specific "
+     "video or track rather than a profile, search results or the "
+     "service's home page."),
     (("private", "login", "sign in", "logged in", "age", "nsfw",
       "authentication", "account", "cookies"),
-     "Контент приватный или с возрастным ограничением — сервис требует "
-     "вход в аккаунт. Если это ваш аккаунт, подключите cookies браузера: "
-     "инструкция в docs/COOKIES.md (папка cookies открывается через "
-     "кнопку 👤 → «Папка cookies»)."),
+     "The content is private or age-restricted — the service requires "
+     "signing in. If this is your account, connect your browser "
+     "cookies: see docs/COOKIES.md (the cookies folder opens via the "
+     "👤 button → “Cookies folder”)."),
     (("429", "too many requests", "rate limit"),
-     "Сервис временно ограничил количество запросов. Подождите "
-     "несколько минут и попробуйте снова."),
+     "The service has temporarily rate-limited requests. Wait a few "
+     "minutes and try again."),
     (("geo", "not available in your country", "region"),
-     "Контент недоступен в вашем регионе."),
+     "The content is not available in your region."),
     (("unable to download", "tunnel", "proxy", "getaddrinfo",
       "timed out", "connection", "network", "ssl"),
-     "Похоже на проблему с сетью. Проверьте интернет-соединение и "
-     "повторите попытку."),
+     "Looks like a network problem. Check your internet connection "
+     "and try again."),
     (("video unavailable", "removed", "deleted", "not exist",
       "no longer available"),
-     "Видео/трек удалён или больше недоступен на сервисе."),
+     "The video/track was removed or is no longer available."),
 )
 
 _DEFAULT_HINT = (
-    "Сервисы часто меняют свои сайты, и загрузчик за ними обновляется. "
-    "Сначала обновите yt-dlp: запустите update.bat (Windows) или "
-    "./update.sh (macOS/Linux) и повторите загрузку. Если не помогло — "
-    "отправьте разработчику файл отчёта (кнопка «Скопировать отчёт»)."
+    "Services change their sites all the time, and the downloader "
+    "keeps up through updates. First update yt-dlp: run update.bat "
+    "(Windows) or ./update.sh (macOS/Linux) and retry. If that does "
+    "not help — send the report file to the developer (the "
+    "“Copy report” button)."
 )
 
 
@@ -168,19 +169,19 @@ def make_error_report(exc: Exception, *, task_id: int, url: str, plugin,
         import yt_dlp
         ytdlp_version = yt_dlp.version.__version__
     except Exception:
-        ytdlp_version = "не установлен"
+        ytdlp_version = "not installed"
     message = short_error(exc)
     report = "\n".join([
-        "MediaGrab — отчёт об ошибке загрузки",
-        f"Время:   {time.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Ссылка:  {url}",
-        f"Сервис:  {plugin.name if plugin else 'Авто'}",
-        f"Формат:  {fmt}, качество: {quality}",
-        f"ОС:      {platform.platform()}",
+        "MediaGrab — download error report",
+        f"Time:    {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Link:    {url}",
+        f"Service: {plugin.name if plugin else 'Auto'}",
+        f"Format:  {fmt}, quality: {quality}",
+        f"OS:      {platform.platform()}",
         f"Python:  {sys.version.split()[0]}",
         f"yt-dlp:  {ytdlp_version}",
         "",
-        "Ошибка:",
+        "Error:",
         str(exc),
         "",
         "Traceback:",
@@ -227,9 +228,9 @@ class DownloadManager:
                 from yt_dlp.utils import sanitize_filename
             except ImportError as exc:
                 self.events.put((task_id, "error", {
-                    "message": "Не установлен yt-dlp",
-                    "hint": "Выполните установку зависимостей: install.bat "
-                            "(Windows) или ./install.sh (macOS/Linux).",
+                    "message": "yt-dlp is not installed",
+                    "hint": "Install the dependencies: run install.bat "
+                            "(Windows) or ./install.sh (macOS/Linux).",
                     "report": str(exc),
                     "report_path": "",
                 }))
@@ -270,10 +271,11 @@ class DownloadManager:
                     entries = [e for e in list(info["entries"]) if e]
                     if not entries:
                         raise RuntimeError(
-                            "по этой ссылке ничего не найдено")
+                            "nothing was found for this link")
                     info = entries[0]
                 if not info:
-                    raise RuntimeError("не удалось получить данные по ссылке")
+                    raise RuntimeError(
+                        "could not fetch data for this link")
 
                 # 2) file name: "Artist - Title", duplicates get " (2)"
                 ext = "mp3" if fmt == "mp3" else "mp4"

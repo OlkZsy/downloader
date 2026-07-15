@@ -72,7 +72,7 @@ cookies).
 
 Restart the application (`start.bat` / `./start.sh`) — the new service
 appears in the sidebar. Paste one of the service's links and check that
-the "Auto" mode detects it (the "Сервис" column in the history).
+the "Auto" mode detects it (the "Service" column in the history).
 
 ## Mini-checklist for a pull request
 

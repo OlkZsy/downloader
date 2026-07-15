@@ -8,9 +8,10 @@ class Facebook(ServicePlugin):
     supported_formats = ("mp3", "mp4")
     order = 40
     error_hint = (
-        "Особенности Facebook: скачиваются только публичные видео. "
-        "Видео из закрытых групп и с ограничениями приватности "
-        "требуют входа и не поддерживаются.")
+        "Facebook specifics: public videos download right away. Videos "
+        "from closed groups or with privacy restrictions require "
+        "signing in — connect your browser cookies (a facebook.txt "
+        "file, see docs/COOKIES.md).")
 
 
 PLUGIN = Facebook()

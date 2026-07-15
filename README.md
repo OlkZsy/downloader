@@ -8,14 +8,12 @@ X (Twitter), Facebook** — and any other site supported by
 New services are added with a single plugin file — see
 [docs/ADDING_SERVICES.md](docs/ADDING_SERVICES.md).
 
-The application UI is in Russian.
-
 ## Features
 
 - Paste a link → press "➜" → the file lands in your download folder.
 - **mp3 / mp4** switch with the active format highlighted in green.
 - Slide-out quality panel: 128/192/320 kbps for mp3,
-  360p–1080p or "Maximum" for mp4.
+  360p–1080p or "Max" for mp4.
 - The **"…"** button picks the download folder; the folder, format and
   quality are **remembered** after the application is closed.
 - The left panel selects a service manually, or the "Auto" mode
@@ -161,21 +159,21 @@ usually enough — the service is detected from the link.
 18+ posts on X, videos from Facebook groups and other "signed-in only"
 content downloads fine once you connect your browser's cookies — a
 single text file placed into the cookies folder (the **👤 →
-"Папка cookies"** button). Your login and password are never stored.
+"Cookies folder"** button). Your login and password are never stored.
 Step-by-step guide: [docs/COOKIES.md](docs/COOKIES.md).
 
 ---
 
 # When a download fails (errors)
 
-When a download ends with an error, **right-click the row → «Почему не
-скачалось…»**. A window opens with:
+When a download ends with an error, **right-click the row →
+"Why it failed…"**. A window opens with:
 
 - **what you can do** — a human explanation of the cause and the steps
   to fix it (e.g. "the content is private, sign-in required", "update
   yt-dlp", "network problem");
 - **the error text** — the technical message;
-- the **«Скопировать отчёт»** button — copies the full report (link,
+- the **"Copy report"** button — copies the full report (link,
   service, program versions, full error text) that you can send to the
   developer;
 - full reports are also saved as files: the `logs` folder next to the

@@ -8,11 +8,12 @@ class XTwitter(ServicePlugin):
     supported_formats = ("mp3", "mp4")
     order = 30
     error_hint = (
-        "Особенности X (Twitter): без входа скачиваются только видео из "
-        "публичных постов. Для постов 18+ и закрытых аккаунтов подключите "
-        "cookies своего браузера — файл x.txt в папке cookies (кнопка 👤 → "
-        "«Папка cookies», инструкция в docs/COOKIES.md). Ссылка должна "
-        "вести на сам пост с видео (…/status/…), а не на профиль.")
+        "X (Twitter) specifics: without signing in only videos from "
+        "public posts can be downloaded. For 18+ posts and private "
+        "accounts connect your browser cookies — an x.txt file in the "
+        "cookies folder (the 👤 button → “Cookies folder”, guide in "
+        "docs/COOKIES.md). The link must point to the post with the "
+        "video itself (…/status/…), not to a profile.")
 
 
 PLUGIN = XTwitter()

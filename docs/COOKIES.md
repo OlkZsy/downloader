@@ -32,7 +32,7 @@ service treats them as yours. Your password is never stored anywhere.
 4. **Rename the file to `x.txt`** and put it into the application's
    cookies folder:
    - in MediaGrab press the **👤** button (to the right of "…") →
-     **«Папка cookies»** — the folder opens by itself
+     **"Cookies folder"** — the folder opens by itself
      (it is `C:\Users\YOUR_NAME\.mediagrab\cookies`, on macOS/Linux —
      `~/.mediagrab/cookies`);
    - drop `x.txt` in there.

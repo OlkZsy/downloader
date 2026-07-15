@@ -18,7 +18,7 @@ from .base import ServicePlugin
 
 class MyService(ServicePlugin):
     id = "myservice"                      # latin letters, no spaces
-    name = "Мой сервис"                   # name shown in the sidebar
+    name = "My Service"                   # name shown in the sidebar
     url_patterns = [r"myservice\.com/"]   # regexes for the service's links
     supported_formats = ("mp3", "mp4")    # what the service supports
     order = 50                            # position in the list

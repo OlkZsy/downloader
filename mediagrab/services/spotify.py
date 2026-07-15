@@ -23,9 +23,9 @@ class Spotify(ServicePlugin):
     supported_formats = ("mp3",)
     order = 15
     error_hint = (
-        "Особенности Spotify: ссылка должна вести на один трек "
-        "(open.spotify.com/track/…). Плейлисты и альбомы пока не "
-        "поддерживаются.")
+        "Spotify specifics: the link must point to a single track "
+        "(open.spotify.com/track/…). Playlists and albums are not "
+        "supported yet.")
 
     def prepare(self, url: str) -> str:
         request = urllib.request.Request(
@@ -37,13 +37,13 @@ class Spotify(ServicePlugin):
                 data = json.load(response)
         except Exception as exc:
             raise RuntimeError(
-                f"Spotify: не удалось получить данные трека ({exc})"
+                f"Spotify: could not fetch track data ({exc})"
             ) from exc
         title = (data.get("title") or "").strip()
         if not title:
             raise RuntimeError(
-                "Spotify: не удалось определить название трека. "
-                "Проверьте, что ссылка ведёт на трек (…/track/…).")
+                "Spotify: could not determine the track title. "
+                "Check that the link points to a track (…/track/…).")
         return f"ytsearch1:{title}"
 
 

@@ -35,16 +35,16 @@ ERROR = "#c62828"
 
 AUTO_ID = "__auto__"
 
-STATUS_QUEUED = "⏳ в очереди"
-STATUS_PROCESSING = "⚙ обработка…"
-STATUS_DONE = "✓ загружено"
-STATUS_ERROR = "✗ ошибка"
+STATUS_QUEUED = "⏳ queued"
+STATUS_PROCESSING = "⚙ processing…"
+STATUS_DONE = "✓ downloaded"
+STATUS_ERROR = "✗ error"
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("MediaGrab — загрузчик mp3/mp4")
+        self.title("MediaGrab — mp3/mp4 downloader")
         self.geometry("1020x600")
         self.minsize(860, 480)
         self.configure(bg=BG)
@@ -81,15 +81,15 @@ class App(tk.Tk):
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
-        tk.Label(sidebar, text="Сервис", bg=PANEL, fg=MUTED,
+        tk.Label(sidebar, text="Service", bg=PANEL, fg=MUTED,
                  font=("TkDefaultFont", 10, "bold"),
                  anchor="w").pack(fill="x", padx=14, pady=(16, 6))
 
-        self._add_service_button(sidebar, AUTO_ID, "Авто (по ссылке)")
+        self._add_service_button(sidebar, AUTO_ID, "Auto (by link)")
         for plugin in services.all_plugins():
             self._add_service_button(sidebar, plugin.id, plugin.name)
 
-        tk.Label(sidebar, text="+ свои сервисы:\nsee docs/ADDING_SERVICES.md",
+        tk.Label(sidebar, text="+ add your own:\nsee docs/ADDING_SERVICES.md",
                  bg=PANEL, fg=MUTED, font=("TkDefaultFont", 8),
                  justify="left", anchor="w").pack(
             side="bottom", fill="x", padx=14, pady=12)
@@ -168,13 +168,13 @@ class App(tk.Tk):
         self.quality_panel = tk.Frame(self.quality_slot, bg=ACCENT_SOFT)
         self.quality_inner = tk.Frame(self.quality_panel, bg=ACCENT_SOFT)
         self.quality_inner.pack(side="right", padx=6, pady=5)
-        tk.Label(self.quality_panel, text="Качество:", bg=ACCENT_SOFT,
+        tk.Label(self.quality_panel, text="Quality:", bg=ACCENT_SOFT,
                  fg=ACCENT_DARK, font=("TkDefaultFont", 9, "bold")).pack(
             side="right", padx=(0, 4))
         self._style_format_buttons()
 
         # --- history ---------------------------------------------------
-        tk.Label(main, text="История и статус загрузок", bg=BG, fg=MUTED,
+        tk.Label(main, text="Download history and status", bg=BG, fg=MUTED,
                  font=("TkDefaultFont", 10, "bold"),
                  anchor="w").pack(fill="x", pady=(14, 4))
 
@@ -192,10 +192,10 @@ class App(tk.Tk):
         columns = ("url", "service", "format", "status")
         self.tree = ttk.Treeview(table_frame, columns=columns,
                                  show="headings", selectmode="browse")
-        self.tree.heading("url", text="Ссылка")
-        self.tree.heading("service", text="Сервис")
-        self.tree.heading("format", text="Формат")
-        self.tree.heading("status", text="Статус")
+        self.tree.heading("url", text="Link")
+        self.tree.heading("service", text="Service")
+        self.tree.heading("format", text="Format")
+        self.tree.heading("status", text="Status")
         self.tree.column("url", width=430, anchor="w")
         self.tree.column("service", width=120, anchor="center")
         self.tree.column("format", width=70, anchor="center")
@@ -225,7 +225,7 @@ class App(tk.Tk):
         self._update_statusbar()
 
     def _update_statusbar(self, extra: str = ""):
-        text = f"Папка загрузки: {self.config_store.download_dir}"
+        text = f"Download folder: {self.config_store.download_dir}"
         if extra:
             text += f"   •   {extra}"
         self.status_var.set(text)
@@ -233,7 +233,7 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     # input placeholder
     # ------------------------------------------------------------------
-    PLACEHOLDER = "Вставьте ссылку на видео или музыку…"
+    PLACEHOLDER = "Paste a video or music link…"
 
     def _set_placeholder(self):
         if not self.url_var.get():
@@ -356,7 +356,7 @@ class App(tk.Tk):
                    else MP4_QUALITIES)
         current = self.config_store.quality_for(self.current_format)
         for value in options:
-            label = f"{value} кбит/с" if self.current_format == "mp3" else value
+            label = f"{value} kbps" if self.current_format == "mp3" else value
             btn = tk.Button(
                 self.quality_inner, text=label,
                 font=("TkDefaultFont", 9), relief="flat", bd=0,
@@ -374,7 +374,7 @@ class App(tk.Tk):
     def _choose_folder(self):
         folder = filedialog.askdirectory(
             initialdir=self.config_store.download_dir,
-            title="Куда сохранять загрузки")
+            title="Where to save downloads")
         if folder:
             self.config_store.download_dir = folder
             self._update_statusbar()
@@ -385,12 +385,13 @@ class App(tk.Tk):
     def _start_download(self):
         url = self._current_url()
         if not url:
-            messagebox.showinfo("MediaGrab", "Вставьте ссылку в строку сверху.")
+            messagebox.showinfo("MediaGrab",
+                                "Paste a link into the box above.")
             return
         if not url.lower().startswith(("http://", "https://")):
             messagebox.showwarning(
-                "MediaGrab", "Похоже, это не ссылка. Ссылка должна "
-                "начинаться с http:// или https://")
+                "MediaGrab", "This does not look like a link. A link "
+                "must start with http:// or https://")
             return
 
         if self.selected_service == AUTO_ID:
@@ -406,10 +407,10 @@ class App(tk.Tk):
         note = ""
         if plugin and fmt not in plugin.supported_formats:
             fmt = plugin.supported_formats[0]
-            note = f"{plugin.name}: доступен только {fmt}"
+            note = f"{plugin.name}: only {fmt} is available"
 
         quality = self.config_store.quality_for(fmt)
-        service_name = plugin.name if plugin else "Авто (yt-dlp)"
+        service_name = plugin.name if plugin else "Auto (yt-dlp)"
 
         entry = self.config_store.add_history(url, service_name, fmt,
                                               "queued")
@@ -423,15 +424,15 @@ class App(tk.Tk):
 
         self.url_var.set("")
         self.url_entry.focus_set()
-        self._update_statusbar(note or f"Загрузка добавлена: {fmt}, {quality}")
+        self._update_statusbar(note or f"Download added: {fmt}, {quality}")
 
     def _poll_events(self):
         if self._version_note and not self._version_shown:
             self._version_shown = True
             self.latest_version = self._version_note
             self._update_statusbar(
-                f"Доступна новая версия {self.latest_version} — "
-                "запустите update.bat (Windows) или ./update.sh")
+                f"New version {self.latest_version} is available — "
+                "run update.bat (Windows) or ./update.sh")
         while not self.manager.events.empty():
             task_id, event, payload = self.manager.events.get_nowait()
             task = self.tasks.get(task_id)
@@ -449,7 +450,7 @@ class App(tk.Tk):
                 self.tree.item(item, tags=("done",))
                 self.config_store.update_history(entry, "done", payload)
                 name = os.path.basename(payload) if payload else entry["url"]
-                self._update_statusbar(f"Готово: {name}")
+                self._update_statusbar(f"Done: {name}")
                 del self.tasks[task_id]
             elif event == "error":
                 self.tree.set(item, "status", STATUS_ERROR)
@@ -460,8 +461,8 @@ class App(tk.Tk):
                     hint=payload.get("hint"),
                     report_path=payload.get("report_path"))
                 self._update_statusbar(
-                    "Ошибка. Правый клик по строке → «Почему не "
-                    "скачалось…» — причина и отчёт")
+                    "Error. Right-click the row → “Why it failed…” "
+                    "for the cause and a report")
                 del self.tasks[task_id]
         self.after(150, self._poll_events)
 
@@ -507,24 +508,24 @@ class App(tk.Tk):
         menu = tk.Menu(self, tearoff=0)
         if entry.get("status") == "done" and entry.get("file"):
             menu.add_command(
-                label="Открыть",
+                label="Open",
                 command=lambda: self._open_file(entry["file"]))
             menu.add_command(
-                label="Показать в папке",
+                label="Show in folder",
                 command=lambda: self._reveal_file(entry["file"]))
             menu.add_separator()
         if entry.get("status") == "error" and entry.get("error"):
             menu.add_command(
-                label="Почему не скачалось…",
+                label="Why it failed…",
                 command=lambda: self._show_error_details(entry))
             menu.add_separator()
         menu.add_command(
-            label="Копировать ссылку",
+            label="Copy link",
             command=lambda: self._copy_url(entry.get("url", "")))
         is_active = any(t["item"] == item for t in self.tasks.values())
         if not is_active:
             menu.add_command(
-                label="Удалить из истории", foreground=ERROR,
+                label="Remove from history", foreground=ERROR,
                 activeforeground=ERROR,
                 command=lambda: self._delete_history_row(item, entry))
         menu.tk_popup(event.x_root, event.y_root)
@@ -532,7 +533,7 @@ class App(tk.Tk):
     def _copy_url(self, url: str):
         self.clipboard_clear()
         self.clipboard_append(url)
-        self._update_statusbar("Ссылка скопирована в буфер обмена")
+        self._update_statusbar("Link copied to clipboard")
 
     def _resolve_file(self, filepath: str):
         if not filepath:
@@ -546,8 +547,8 @@ class App(tk.Tk):
         path = self._resolve_file(filepath)
         if not path:
             messagebox.showinfo(
-                "MediaGrab", "Файл не найден — возможно, он был "
-                "перемещён или удалён.")
+                "MediaGrab", "File not found — it may have been "
+                "moved or deleted.")
             return
         self._open_in_system(path)
 
@@ -555,8 +556,8 @@ class App(tk.Tk):
         path = self._resolve_file(filepath)
         if not path:
             messagebox.showinfo(
-                "MediaGrab", "Файл не найден — возможно, он был "
-                "перемещён или удалён.")
+                "MediaGrab", "File not found — it may have been "
+                "moved or deleted.")
             return
         if sys.platform == "win32":
             subprocess.Popen(["explorer", "/select,", path])
@@ -584,7 +585,7 @@ class App(tk.Tk):
     # ------------------------------------------------------------------
     def _show_error_details(self, entry: dict):
         win = tk.Toplevel(self)
-        win.title("Почему не скачалось")
+        win.title("Why it failed")
         win.configure(bg=BG)
         win.geometry("600x430")
         win.transient(self)
@@ -594,14 +595,14 @@ class App(tk.Tk):
                  font=("TkDefaultFont", 9)).pack(
             anchor="w", padx=16, pady=(12, 2))
 
-        tk.Label(win, text="Что можно сделать", bg=BG, fg=ACCENT_DARK,
+        tk.Label(win, text="What you can do", bg=BG, fg=ACCENT_DARK,
                  font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w", padx=16, pady=(8, 2))
-        tk.Label(win, text=entry.get("hint") or "Причина неизвестна.",
+        tk.Label(win, text=entry.get("hint") or "Unknown cause.",
                  bg=BG, fg=TEXT, wraplength=560, justify="left").pack(
             anchor="w", padx=16)
 
-        tk.Label(win, text="Текст ошибки", bg=BG, fg=MUTED,
+        tk.Label(win, text="Error text", bg=BG, fg=MUTED,
                  font=("TkDefaultFont", 10, "bold")).pack(
             anchor="w", padx=16, pady=(12, 2))
         text = tk.Text(win, height=5, wrap="word", bg=CARD, fg=ERROR,
@@ -612,24 +613,24 @@ class App(tk.Tk):
 
         report_path = entry.get("report_path") or ""
         if report_path:
-            tk.Label(win, text=f"Полный отчёт: {report_path}", bg=BG,
+            tk.Label(win, text=f"Full report: {report_path}", bg=BG,
                      fg=MUTED, wraplength=560, justify="left",
                      font=("TkDefaultFont", 8)).pack(
                 anchor="w", padx=16, pady=(6, 0))
 
         buttons = tk.Frame(win, bg=BG)
         buttons.pack(fill="x", padx=16, pady=14)
-        tk.Button(buttons, text="Скопировать отчёт", bg=ACCENT, fg="white",
+        tk.Button(buttons, text="Copy report", bg=ACCENT, fg="white",
                   relief="flat", cursor="hand2", padx=10,
                   command=lambda: self._copy_report(entry)).pack(side="left")
         if report_path:
-            tk.Button(buttons, text="Открыть папку отчётов", bg=CARD,
+            tk.Button(buttons, text="Open reports folder", bg=CARD,
                       fg=TEXT, relief="solid", bd=1, cursor="hand2",
                       padx=10,
                       command=lambda: self._open_in_system(
                           os.path.dirname(report_path))).pack(
                 side="left", padx=8)
-        tk.Button(buttons, text="Закрыть", bg=CARD, fg=TEXT,
+        tk.Button(buttons, text="Close", bg=CARD, fg=TEXT,
                   relief="solid", bd=1, cursor="hand2", padx=10,
                   command=win.destroy).pack(side="right")
 
@@ -644,16 +645,16 @@ class App(tk.Tk):
                 report = ""
         if not report:
             report = "\n".join(filter(None, [
-                "MediaGrab — ошибка загрузки",
-                f"Ссылка: {entry.get('url', '')}",
-                f"Сервис: {entry.get('service', '')}",
-                f"Формат: {entry.get('format', '')}",
-                f"Ошибка: {entry.get('error', '')}",
+                "MediaGrab — download error",
+                f"Link:    {entry.get('url', '')}",
+                f"Service: {entry.get('service', '')}",
+                f"Format:  {entry.get('format', '')}",
+                f"Error:   {entry.get('error', '')}",
             ]))
         self.clipboard_clear()
         self.clipboard_append(report)
         self._update_statusbar(
-            "Отчёт скопирован — можно вставить в сообщение разработчику")
+            "Report copied — paste it into a message to the developer")
 
     # ------------------------------------------------------------------
     # profile and settings
@@ -667,7 +668,7 @@ class App(tk.Tk):
 
     def _show_profile(self):
         win = tk.Toplevel(self)
-        win.title("Профиль и настройки")
+        win.title("Profile & settings")
         win.configure(bg=BG)
         win.geometry("620x640")
         win.minsize(560, 560)
@@ -679,10 +680,10 @@ class App(tk.Tk):
                 anchor="w", padx=16, pady=(14, 4))
 
         # --- profile ---------------------------------------------------
-        section("Профиль")
+        section("Profile")
         name_row = tk.Frame(win, bg=BG)
         name_row.pack(fill="x", padx=16)
-        tk.Label(name_row, text="Имя:", bg=BG, fg=TEXT).pack(side="left")
+        tk.Label(name_row, text="Name:", bg=BG, fg=TEXT).pack(side="left")
         name_var = tk.StringVar(value=self.config_store.profile_name)
         name_entry = tk.Entry(name_row, textvariable=name_var, bg=CARD,
                               fg=TEXT, relief="solid", bd=1)
@@ -697,103 +698,104 @@ class App(tk.Tk):
                      lambda: (save_name(), win.destroy()))
 
         # --- version ---------------------------------------------------
-        section("Версия приложения")
+        section("App version")
         if self.latest_version:
             version_text = (
-                f"Установлена {local_version()}. Доступна новая версия "
-                f"{self.latest_version}!\nЗакройте приложение и запустите "
-                "update.bat (Windows) или ./update.sh (macOS/Linux).")
+                f"Installed: {local_version()}. New version "
+                f"{self.latest_version} is available!\nClose the app and "
+                "run update.bat (Windows) or ./update.sh (macOS/Linux).")
             version_color = ERROR
         else:
-            version_text = (f"Установлена версия {local_version()} — "
-                            "новых версий на GitHub не найдено.\n"
-                            "Проверка выполняется при каждом запуске.")
+            version_text = (f"Installed version {local_version()} — "
+                            "no newer version found on GitHub.\n"
+                            "The check runs on every start.")
             version_color = TEXT
         tk.Label(win, text=version_text, bg=BG, fg=version_color,
                  wraplength=560, justify="left").pack(anchor="w", padx=16)
 
         # --- downloads ---------------------------------------------------
-        section("Загрузки")
+        section("Downloads")
         folder_var = tk.StringVar(
-            value=f"Папка: {self.config_store.download_dir}")
+            value=f"Folder: {self.config_store.download_dir}")
         tk.Label(win, textvariable=folder_var, bg=BG, fg=TEXT,
                  wraplength=560, justify="left").pack(anchor="w", padx=16)
         history = self.config_store.history
         done = sum(1 for e in history if e.get("status") == "done")
-        tk.Label(win, text=f"В истории: {len(history)} загрузок, "
-                           f"из них успешных: {done}",
+        tk.Label(win, text=f"History: {len(history)} downloads, "
+                           f"{done} successful",
                  bg=BG, fg=MUTED).pack(anchor="w", padx=16, pady=(2, 0))
 
         def change_folder():
             self._choose_folder()
-            folder_var.set(f"Папка: {self.config_store.download_dir}")
+            folder_var.set(f"Folder: {self.config_store.download_dir}")
 
         dl_buttons = tk.Frame(win, bg=BG)
         dl_buttons.pack(fill="x", padx=16, pady=(6, 0))
-        tk.Button(dl_buttons, text="Изменить папку…", bg=CARD, fg=TEXT,
+        tk.Button(dl_buttons, text="Change folder…", bg=CARD, fg=TEXT,
                   relief="solid", bd=1, cursor="hand2", padx=8,
                   command=change_folder).pack(side="left")
-        tk.Button(dl_buttons, text="Очистить историю", bg=CARD, fg=ERROR,
+        tk.Button(dl_buttons, text="Clear history", bg=CARD, fg=ERROR,
                   relief="solid", bd=1, cursor="hand2", padx=8,
                   command=self._clear_history_ui).pack(side="left", padx=8)
 
         # --- profile data ------------------------------------------------
-        section("Данные профиля")
+        section("Profile data")
         tk.Label(win, text=(
-            "Все данные — настройки, история, cookies, отчёты об ошибках — "
-            f"хранятся отдельно от программы, в папке:\n{CONFIG_DIR}\n"
-            "Обновление через update.bat / update.sh заменяет только файлы "
-            "программы и НЕ трогает эту папку."),
+            "All data — settings, history, cookies, error reports — is "
+            f"stored separately from the program, in:\n{CONFIG_DIR}\n"
+            "Updating via update.bat / update.sh replaces only the program "
+            "files and does NOT touch this folder."),
             bg=BG, fg=TEXT, wraplength=560, justify="left").pack(
             anchor="w", padx=16)
         tk.Label(win, text=(
-            "Вход в аккаунты (X, Facebook и др.) выполняется через файлы "
-            "cookies браузера — например, cookies/x.txt. Пошаговая "
-            "инструкция: docs/COOKIES.md (файл КАК_ПОДКЛЮЧИТЬ_АККАУНТ.txt "
-            "появится в папке cookies)."),
+            "Signing in to accounts (X, Facebook etc.) works through "
+            "browser cookie files — e.g. cookies/x.txt. Step-by-step "
+            "guide: docs/COOKIES.md (a HOW_TO_CONNECT_ACCOUNT.txt memo "
+            "appears in the cookies folder)."),
             bg=BG, fg=MUTED, wraplength=560, justify="left").pack(
             anchor="w", padx=16, pady=(6, 0))
 
         data_buttons = tk.Frame(win, bg=BG)
         data_buttons.pack(fill="x", padx=16, pady=(8, 0))
-        tk.Button(data_buttons, text="Открыть папку данных", bg=CARD,
+        tk.Button(data_buttons, text="Open data folder", bg=CARD,
                   fg=TEXT, relief="solid", bd=1, cursor="hand2", padx=8,
                   command=lambda: self._open_in_system(str(CONFIG_DIR))
                   ).pack(side="left")
-        tk.Button(data_buttons, text="Папка cookies", bg=CARD, fg=TEXT,
+        tk.Button(data_buttons, text="Cookies folder", bg=CARD, fg=TEXT,
                   relief="solid", bd=1, cursor="hand2", padx=8,
                   command=self._open_cookies_folder).pack(
             side="left", padx=8)
 
-        tk.Button(win, text="Закрыть", bg=ACCENT, fg="white",
+        tk.Button(win, text="Close", bg=ACCENT, fg="white",
                   relief="flat", cursor="hand2", padx=12,
                   command=lambda: (save_name(), win.destroy())).pack(
             side="bottom", anchor="e", padx=16, pady=12)
 
-    COOKIES_README = """Как подключить аккаунт (например, X/Twitter):
+    COOKIES_README = """How to connect an account (e.g. X/Twitter):
 
-1. Установите в браузер расширение для экспорта cookies:
-   - Chrome/Edge: «Get cookies.txt LOCALLY»
-   - Firefox: «cookies.txt»
-2. Войдите в свой аккаунт на сайте (например, x.com).
-3. Находясь на этом сайте, нажмите значок расширения -> Export.
-4. Сохраните файл в ЭТУ папку под именем <сервис>.txt:
+1. Install a cookies-export extension in your browser:
+   - Chrome/Edge: "Get cookies.txt LOCALLY"
+   - Firefox: "cookies.txt"
+2. Sign in to your account on the site (e.g. x.com).
+3. While on that site, click the extension icon -> Export.
+4. Save the file into THIS folder as <service>.txt:
    x.txt, facebook.txt, youtube.txt, tiktok.txt
-   (файл all.txt будет использоваться для всех сервисов)
-5. Повторите загрузку в MediaGrab — cookies подхватятся сами.
+   (an all.txt file is used for every service)
+5. Retry the download in MediaGrab — cookies are picked up
+   automatically.
 
-ВАЖНО: файл cookies даёт доступ к вашему аккаунту.
-Никому его не отправляйте и не выкладывайте в интернет.
-Cookies со временем устаревают — если вход перестал работать,
-экспортируйте файл заново.
+IMPORTANT: a cookies file grants access to your account.
+Never send it to anyone and never publish it online.
+Cookies expire over time — if signing in stops working,
+export the file again.
 
-Подробная инструкция: docs/COOKIES.md в папке программы.
+Detailed guide: docs/COOKIES.md in the program folder.
 """
 
     def _open_cookies_folder(self):
         try:
             COOKIES_DIR.mkdir(parents=True, exist_ok=True)
-            readme = COOKIES_DIR / "КАК_ПОДКЛЮЧИТЬ_АККАУНТ.txt"
+            readme = COOKIES_DIR / "HOW_TO_CONNECT_ACCOUNT.txt"
             if not readme.exists():
                 readme.write_text(self.COOKIES_README, encoding="utf-8")
         except OSError:
@@ -802,8 +804,8 @@ Cookies со временем устаревают — если вход пер�
 
     def _clear_history_ui(self):
         if not messagebox.askyesno(
-                "MediaGrab", "Очистить историю загрузок?\n"
-                "Сами скачанные файлы останутся на диске."):
+                "MediaGrab", "Clear the download history?\n"
+                "The downloaded files stay on disk."):
             return
         active_items = {t["item"] for t in self.tasks.values()}
         active_entries = [t["entry"] for t in self.tasks.values()]
@@ -812,7 +814,7 @@ Cookies со временем устаревают — если вход пер�
             if item not in active_items:
                 self.row_entries.pop(item, None)
                 self.tree.delete(item)
-        self._update_statusbar("История очищена")
+        self._update_statusbar("History cleared")
 
     # ------------------------------------------------------------------
     def _check_dependencies(self):
@@ -820,12 +822,12 @@ Cookies со временем устаревают — если вход пер�
         try:
             import yt_dlp  # noqa: F401
         except ImportError:
-            problems.append("не установлен yt-dlp "
+            problems.append("yt-dlp is not installed "
                             "(pip install -r requirements.txt)")
         import shutil
         if not shutil.which("ffmpeg"):
-            problems.append("не найден ffmpeg — mp3 и склейка видео "
-                            "работать не будут (см. README)")
+            problems.append("ffmpeg not found — mp3 and video merging "
+                            "will not work (see README)")
         if problems:
             self._update_statusbar("⚠ " + "; ".join(problems))
 
