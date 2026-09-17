@@ -41,3 +41,14 @@ class ServicePlugin:
     def tweak_options(self, options: dict, fmt: str) -> dict:
         """Adjust yt-dlp options for this service's quirks."""
         return options
+
+    def retry_variants(self) -> list:
+        """Option overrides to try in turn while a download keeps failing.
+
+        Services sometimes refuse one particular request (HTTP 403 is
+        the classic one) even though the same download goes through with
+        slightly different options. Each item is an option dict merged
+        into the yt-dlp options for that attempt, so the first one is
+        empty — the normal attempt. See youtube.py for an example.
+        """
+        return [{}]

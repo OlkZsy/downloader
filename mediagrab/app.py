@@ -19,6 +19,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .config import CONFIG_DIR, COOKIES_DIR, Config
 from .engine import MP3_BITRATES, MP4_QUALITIES, DownloadManager
+from .updater import update_ytdlp, ytdlp_version
 from .version import check_remote, local_version
 from . import services
 
@@ -445,6 +446,10 @@ class App(tk.Tk):
                 self.tree.set(item, "status", f"{payload:.0f}%")
             elif event == "processing":
                 self.tree.set(item, "status", STATUS_PROCESSING)
+            elif event == "retry":
+                attempt, total = payload
+                self.tree.set(item, "status",
+                              f"↻ retry {attempt}/{total}")
             elif event == "done":
                 self.tree.set(item, "status", STATUS_DONE)
                 self.tree.item(item, tags=("done",))
@@ -666,6 +671,43 @@ class App(tk.Tk):
         except Exception:  # noqa: BLE001 — no network etc.: skip silently
             self._version_note = None
 
+    def _version_summary(self) -> str:
+        if self.latest_version:
+            return (f"Installed: {local_version()}. New version "
+                    f"{self.latest_version} is available!\nClose the app "
+                    "and run update.bat (Windows) or ./update.sh "
+                    "(macOS/Linux).")
+        return (f"Installed version {local_version()} — no newer version "
+                "found on GitHub.")
+
+    @staticmethod
+    def _run_async(window, work, finished):
+        """Run work() off the UI thread, then call finished(result, error).
+
+        Tk widgets may only be touched from the main thread, so the
+        result is polled with after() instead of being handed over
+        directly from the worker thread.
+        """
+        state = {}
+
+        def worker():
+            try:
+                state["result"] = work()
+            except Exception as exc:  # noqa: BLE001 — reported in the window
+                state["error"] = exc
+            state["done"] = True
+
+        def poll():
+            if not window.winfo_exists():
+                return
+            if not state.get("done"):
+                window.after(200, poll)
+                return
+            finished(state.get("result"), state.get("error"))
+
+        threading.Thread(target=worker, daemon=True).start()
+        window.after(200, poll)
+
     def _show_profile(self):
         win = tk.Toplevel(self)
         win.title("Profile & settings")
@@ -699,19 +741,69 @@ class App(tk.Tk):
 
         # --- version ---------------------------------------------------
         section("App version")
-        if self.latest_version:
-            version_text = (
-                f"Installed: {local_version()}. New version "
-                f"{self.latest_version} is available!\nClose the app and "
-                "run update.bat (Windows) or ./update.sh (macOS/Linux).")
-            version_color = ERROR
-        else:
-            version_text = (f"Installed version {local_version()} — "
-                            "no newer version found on GitHub.\n"
-                            "The check runs on every start.")
-            version_color = TEXT
-        tk.Label(win, text=version_text, bg=BG, fg=version_color,
-                 wraplength=560, justify="left").pack(anchor="w", padx=16)
+        version_var = tk.StringVar(value=self._version_summary())
+        version_label = tk.Label(win, textvariable=version_var, bg=BG,
+                                 fg=ERROR if self.latest_version else TEXT,
+                                 wraplength=560, justify="left")
+        version_label.pack(anchor="w", padx=16)
+
+        library_var = tk.StringVar(
+            value=f"Download library: yt-dlp {ytdlp_version()}")
+        tk.Label(win, textvariable=library_var, bg=BG, fg=MUTED,
+                 wraplength=560, justify="left").pack(
+            anchor="w", padx=16, pady=(4, 0))
+
+        version_buttons = tk.Frame(win, bg=BG)
+        version_buttons.pack(fill="x", padx=16, pady=(8, 0))
+        check_btn = tk.Button(
+            version_buttons, text="Check for updates", bg=CARD, fg=TEXT,
+            relief="solid", bd=1, cursor="hand2", padx=8)
+        check_btn.pack(side="left")
+        update_btn = tk.Button(
+            version_buttons, text="Update yt-dlp", bg=CARD, fg=TEXT,
+            relief="solid", bd=1, cursor="hand2", padx=8)
+        update_btn.pack(side="left", padx=8)
+
+        def check_updates():
+            check_btn.configure(state="disabled")
+            version_var.set("Checking GitHub for a new version…")
+            version_label.configure(fg=MUTED)
+
+            def finished(result, error):
+                check_btn.configure(state="normal")
+                if error is not None:
+                    version_var.set(
+                        f"Installed version {local_version()} — could not "
+                        "reach GitHub. Check your internet connection.")
+                    version_label.configure(fg=ERROR)
+                    return
+                self.latest_version = result
+                self._version_shown = True   # do not repeat it in the status bar
+                version_var.set(self._version_summary())
+                version_label.configure(fg=ERROR if result else TEXT)
+
+            self._run_async(win, check_remote, finished)
+
+        def update_library():
+            update_btn.configure(state="disabled")
+            library_var.set("Updating yt-dlp, this may take a minute…")
+
+            def finished(result, error):
+                update_btn.configure(state="normal")
+                if error is not None:
+                    library_var.set(f"Update failed: {error}")
+                    return
+                ok, message = result
+                prefix = "" if ok else "Update failed: "
+                library_var.set(
+                    f"{prefix}{message}\nDownload library: "
+                    f"yt-dlp {ytdlp_version()}")
+                self._update_statusbar(message)
+
+            self._run_async(win, update_ytdlp, finished)
+
+        check_btn.configure(command=check_updates)
+        update_btn.configure(command=update_library)
 
         # --- downloads ---------------------------------------------------
         section("Downloads")

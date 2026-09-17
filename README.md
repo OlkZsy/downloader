@@ -37,9 +37,15 @@ New services are added with a single plugin file — see
 - **Signing in to accounts via browser cookies** (X, Facebook,
   YouTube…) — one text file in the cookies folder:
   [docs/COOKIES.md](docs/COOKIES.md).
+- **Automatic retries when a service refuses a download**: YouTube
+  answers "HTTP Error 403: Forbidden" to some requests, so the same
+  download is repeated asking as a different player client until one
+  goes through (the history row shows "↻ retry 2/5").
 - **Automatic update checks**: on startup the application compares its
   version with GitHub and suggests running `update.bat` / `./update.sh`
-  in the status bar when a new one is out.
+  in the status bar when a new one is out. The 👤 profile window also
+  has **"Check for updates"** and **"Update yt-dlp"** buttons, so the
+  download library can be refreshed without opening a terminal.
 - All user data (settings, history, cookies) lives in `~/.mediagrab` —
   **separate from the program**, so updates never overwrite it.
 - Several downloads at once (a queue with 2 parallel workers).
@@ -184,7 +190,8 @@ Typical causes:
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Errors on almost every service | yt-dlp is outdated — run `update.bat` / `./update.sh` |
+| Errors on almost every service | yt-dlp is outdated — press "Update yt-dlp" in the 👤 profile window, or run `update.bat` / `./update.sh` |
+| "HTTP Error 403: Forbidden" | The service refused the request, not a network fault. The app already retries with other player clients; if all of them fail, press "Update yt-dlp" (👤 profile window) and retry, then connect cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
 | "ffmpeg" in the error text | ffmpeg is not installed — see the install section for your OS above |
 | X (Twitter) won't download | Only public posts are available without signing in. For 18+ and private accounts connect cookies: [docs/COOKIES.md](docs/COOKIES.md) |
 | Facebook won't download | Public videos work right away; for group videos connect cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
@@ -219,6 +226,7 @@ downloader/
 │   ├── engine.py           # download engine (yt-dlp, background threads)
 │   ├── config.py           # settings and history (~/.mediagrab/config.json)
 │   ├── version.py          # new-version check against GitHub
+│   ├── updater.py          # updating the yt-dlp library from the app
 │   └── services/           # service plugins
 │       ├── base.py         # plugin base class (the "blueprint")
 │       ├── _template.py    # template for a new service
