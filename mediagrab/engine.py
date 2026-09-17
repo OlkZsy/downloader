@@ -8,6 +8,7 @@ events from the DownloadManager.events queue (tuples of
     ("start", None)        — download started
     ("progress", 42.5)     — download percentage
     ("processing", None)   — conversion (ffmpeg)
+    ("retry", (2, 4))      — attempt 2 of 4 with different options
     ("done", "/full/path/to/file.mp3") — finished
     ("error", {"message", "hint", "report", "report_path"}) — failed
 
@@ -54,6 +55,10 @@ def build_options(fmt: str, quality: str, outdir: str) -> dict:
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        # services occasionally reject single requests (HTTP 403 and the
+        # like); retrying the request usually gets through
+        "retries": 10,
+        "fragment_retries": 10,
     }
     if fmt == "mp3":
         opts["format"] = "bestaudio/best"
@@ -121,8 +126,17 @@ _HINTS = (
      "This link is not supported. Check that it points to a specific "
      "video or track rather than a profile, search results or the "
      "service's home page."),
-    (("private", "login", "sign in", "logged in", "age", "nsfw",
-      "authentication", "account", "cookies"),
+    (("403", "forbidden", "nsig", "signature extraction",
+      "player response", "precondition check failed"),
+     "The service refused the download (HTTP 403). This is almost "
+     "always the site changing something on its side, not your "
+     "connection. Update the download library: the “Update yt-dlp” "
+     "button in the 👤 profile window (or run update.bat / "
+     "./update.sh), then retry. If it still fails, connect your "
+     "browser cookies — see docs/COOKIES.md."),
+    (("age-restricted", "age restricted", "age_limit", "private",
+      "login", "sign in", "logged in", "nsfw", "authentication",
+      "account", "cookies"),
      "The content is private or age-restricted — the service requires "
      "signing in. If this is your account, connect your browser "
      "cookies: see docs/COOKIES.md (the cookies folder opens via the "
@@ -140,6 +154,21 @@ _HINTS = (
       "no longer available"),
      "The video/track was removed or is no longer available."),
 )
+
+# errors worth retrying with different service options (see
+# ServicePlugin.retry_variants): the site refused this particular
+# request rather than the content being unavailable
+_RETRY_MARKERS = (
+    "403", "forbidden", "fragment", "unable to download video data",
+    "nsig", "signature", "player response", "precondition check failed",
+    "throttl", "timed out", "connection reset",
+)
+
+
+def is_retryable(exc: Exception) -> bool:
+    low = str(exc).lower()
+    return any(marker in low for marker in _RETRY_MARKERS)
+
 
 _DEFAULT_HINT = (
     "Services change their sites all the time, and the downloader "
@@ -224,8 +253,7 @@ class DownloadManager:
     def _worker(self, task_id, url, plugin, fmt, quality, outdir):
         with self._sem:
             try:
-                import yt_dlp
-                from yt_dlp.utils import sanitize_filename
+                import yt_dlp  # noqa: F401 — checked here, used below
             except ImportError as exc:
                 self.events.put((task_id, "error", {
                     "message": "yt-dlp is not installed",
@@ -237,81 +265,103 @@ class DownloadManager:
                 return
             self.events.put((task_id, "start", None))
 
-            def hook(d):
-                status = d.get("status")
-                if status == "downloading":
-                    total = (d.get("total_bytes")
-                             or d.get("total_bytes_estimate"))
-                    done = d.get("downloaded_bytes") or 0
-                    if total:
-                        self.events.put(
-                            (task_id, "progress", done * 100.0 / total))
-                elif status == "finished":
-                    self.events.put((task_id, "processing", None))
+            # A service may refuse one particular request (HTTP 403 is
+            # the usual one on YouTube) while the very same download
+            # succeeds with different service options, so every variant
+            # the plugin offers is tried before giving up.
+            variants = list(plugin.retry_variants()) if plugin else [{}]
+            last_exc = None
+            for attempt, extra in enumerate(variants, start=1):
+                if attempt > 1:
+                    self.events.put(
+                        (task_id, "retry", (attempt, len(variants))))
+                try:
+                    path = self._download_once(
+                        task_id, url, plugin, fmt, quality, outdir, extra)
+                    self.events.put((task_id, "done", path))
+                    return
+                except Exception as exc:  # noqa: BLE001 — reported in the UI
+                    last_exc = exc
+                    if attempt >= len(variants) or not is_retryable(exc):
+                        break
+            self.events.put((task_id, "error", make_error_report(
+                last_exc, task_id=task_id, url=url, plugin=plugin,
+                fmt=fmt, quality=quality)))
 
-            try:
-                os.makedirs(outdir, exist_ok=True)
-                real_url = plugin.prepare(url) if plugin else url
-                opts = build_options(fmt, quality, outdir)
-                if plugin:
-                    opts = plugin.tweak_options(opts, fmt)
-                cookie_file = find_cookie_file(plugin)
-                if cookie_file:
-                    opts["cookiefile"] = str(cookie_file)
+    def _download_once(self, task_id, url, plugin, fmt, quality, outdir,
+                       extra_options):
+        import yt_dlp
+        from yt_dlp.utils import sanitize_filename
 
-                # 1) metadata — used for the file name and format choice
-                probe = {k: v for k, v in opts.items()
-                         if k not in ("postprocessors",
-                                      "merge_output_format",
-                                      "postprocessor_args")}
-                probe["skip_download"] = True
-                with yt_dlp.YoutubeDL(probe) as ydl:
-                    info = ydl.extract_info(real_url, download=False)
-                if info and info.get("entries") is not None:
-                    entries = [e for e in list(info["entries"]) if e]
-                    if not entries:
-                        raise RuntimeError(
-                            "nothing was found for this link")
-                    info = entries[0]
-                if not info:
-                    raise RuntimeError(
-                        "could not fetch data for this link")
+        def hook(d):
+            status = d.get("status")
+            if status == "downloading":
+                total = (d.get("total_bytes")
+                         or d.get("total_bytes_estimate"))
+                done = d.get("downloaded_bytes") or 0
+                if total:
+                    self.events.put(
+                        (task_id, "progress", done * 100.0 / total))
+            elif status == "finished":
+                self.events.put((task_id, "processing", None))
 
-                # 2) file name: "Artist - Title", duplicates get " (2)"
-                ext = "mp3" if fmt == "mp3" else "mp4"
-                base = sanitize_filename(display_title(info, fmt))
-                final_path = unique_path(outdir, base, ext)
-                stem = os.path.splitext(final_path)[0]
-                # % is special in the outtmpl template — escape it
-                opts["outtmpl"] = stem.replace("%", "%%") + ".%(ext)s"
+        os.makedirs(outdir, exist_ok=True)
+        real_url = plugin.prepare(url) if plugin else url
+        opts = build_options(fmt, quality, outdir)
+        if plugin:
+            opts = plugin.tweak_options(opts, fmt)
+        opts.update(extra_options)
+        cookie_file = find_cookie_file(plugin)
+        if cookie_file:
+            opts["cookiefile"] = str(cookie_file)
 
-                # 3) if a non-AAC audio codec (e.g. Opus) is being merged
-                # into mp4, transcode it: stock Windows players would
-                # otherwise play the file without sound
-                if fmt == "mp4":
-                    requested = info.get("requested_formats") or [info]
-                    acodecs = {f.get("acodec") for f in requested
-                               if f.get("acodec") not in (None, "none")}
-                    if acodecs and any(
-                            not str(c).startswith(("mp4a", "aac"))
-                            for c in acodecs):
-                        opts["postprocessor_args"] = {"merger": [
-                            "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]}
+        # 1) metadata — used for the file name and format choice
+        probe = {k: v for k, v in opts.items()
+                 if k not in ("postprocessors",
+                              "merge_output_format",
+                              "postprocessor_args")}
+        probe["skip_download"] = True
+        with yt_dlp.YoutubeDL(probe) as ydl:
+            info = ydl.extract_info(real_url, download=False)
+        if info and info.get("entries") is not None:
+            entries = [e for e in list(info["entries"]) if e]
+            if not entries:
+                raise RuntimeError("nothing was found for this link")
+            info = entries[0]
+        if not info:
+            raise RuntimeError("could not fetch data for this link")
 
-                opts["progress_hooks"] = [hook]
-                target = (info.get("webpage_url")
-                          or info.get("original_url") or real_url)
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    ydl.download([target])
+        # 2) file name: "Artist - Title", duplicates get " (2)"
+        ext = "mp3" if fmt == "mp3" else "mp4"
+        base = sanitize_filename(display_title(info, fmt))
+        final_path = unique_path(outdir, base, ext)
+        stem = os.path.splitext(final_path)[0]
+        # % is special in the outtmpl template — escape it
+        opts["outtmpl"] = stem.replace("%", "%%") + ".%(ext)s"
 
-                if not os.path.exists(final_path):
-                    # safety net: look the file up by its name stem
-                    import glob
-                    matches = glob.glob(glob.escape(stem) + ".*")
-                    if matches:
-                        final_path = matches[0]
-                self.events.put((task_id, "done", final_path))
-            except Exception as exc:  # noqa: BLE001 — surface any failure in the UI
-                self.events.put((task_id, "error", make_error_report(
-                    exc, task_id=task_id, url=url, plugin=plugin,
-                    fmt=fmt, quality=quality)))
+        # 3) if a non-AAC audio codec (e.g. Opus) is being merged
+        # into mp4, transcode it: stock Windows players would
+        # otherwise play the file without sound
+        if fmt == "mp4":
+            requested = info.get("requested_formats") or [info]
+            acodecs = {f.get("acodec") for f in requested
+                       if f.get("acodec") not in (None, "none")}
+            if acodecs and any(
+                    not str(c).startswith(("mp4a", "aac"))
+                    for c in acodecs):
+                opts["postprocessor_args"] = {"merger": [
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]}
+
+        opts["progress_hooks"] = [hook]
+        target = (info.get("webpage_url")
+                  or info.get("original_url") or real_url)
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([target])
+
+        if not os.path.exists(final_path):
+            # safety net: look the file up by its name stem
+            import glob
+            matches = glob.glob(glob.escape(stem) + ".*")
+            if matches:
+                final_path = matches[0]
+        return final_path

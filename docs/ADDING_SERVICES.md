@@ -64,6 +64,19 @@ def tweak_options(self, options, fmt):
     return options
 ```
 
+### `retry_variants(self) -> list`
+
+Returns option dicts to try in turn while a download keeps failing with
+an error that looks temporary (HTTP 403, broken fragments and the
+like). The first entry is empty — the normal attempt. `youtube.py` uses
+this to re-ask as a different player client, which is the standard cure
+for "HTTP Error 403: Forbidden":
+
+```python
+def retry_variants(self):
+    return [{}, {"extractor_args": {"youtube": {"player_client": ["tv"]}}}]
+```
+
 There is also an `error_hint` attribute — a text appended to error
 messages for this service (e.g. a reminder that private content needs
 cookies).
