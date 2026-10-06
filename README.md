@@ -193,24 +193,17 @@ Typical causes:
 | Errors on almost every service | yt-dlp is outdated — press "Update yt-dlp" in the 👤 profile window, or run `update.bat` / `./update.sh` |
 | "HTTP Error 403: Forbidden" | The service refused the request, not a network fault. The app already retries with other player clients; if all of them fail, press "Update yt-dlp" (👤 profile window) and retry, then connect cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
 | "ffmpeg" in the error text | ffmpeg is not installed — see the install section for your OS above |
-| X (Twitter) won't download | Only public posts are available without signing in. For 18+ and private accounts connect cookies: [docs/COOKIES.md](docs/COOKIES.md) |
+| X (Twitter) won't download | Only public posts are available without signing in. For private accounts connect cookies: [docs/COOKIES.md](docs/COOKIES.md) |
 | Facebook won't download | Public videos work right away; for group videos connect cookies ([docs/COOKIES.md](docs/COOKIES.md)) |
 | "Unsupported URL" | The link points to a profile/search/home page instead of a video/track |
 | "429 / Too Many Requests" | The service rate-limited you — wait a few minutes |
 
 ---
-
 # Adding a new service
 
 Every service is one small file in `mediagrab/services/`, and a ready
 template `_template.py` lives right there. The detailed guide with
 examples: [docs/ADDING_SERVICES.md](docs/ADDING_SERVICES.md).
-
-# Inviting another person to the project
-
-Step-by-step guide (adding a collaborator to the GitHub repository and
-working via fork + pull request):
-[docs/COLLABORATORS.md](docs/COLLABORATORS.md).
 
 # Project structure
 
@@ -237,10 +230,4 @@ downloader/
     ├── COOKIES.md          # signing in to accounts via cookies
     └── COLLABORATORS.md    # how to invite a collaborator
 ```
-
-# Important
-
-Only download content you have the rights to (your own material,
-freely licensed works and so on). Responsibility for how the
-application is used lies with the user — respect the services' terms
 and the copyright laws of your country.
